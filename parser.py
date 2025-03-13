@@ -4,30 +4,6 @@ from typing import List, Set, Tuple, Literal, Union
 
 ROOT_RULE= "$"
 root_rule_number = 0
-# Terminal = Literal[
-#     "a", "b", "c", "d", "e", "f", "g", "h", "i",
-#     "j", "k", "l", "m", "n", "o", "p", "q", "r",
-#     "s", "t", "u", "v", "w", "x", "y", "z", ":",
-#     "{", "}", "[", "]", "\"" 
-# ]
-# NonTerminal = Literal[
-#     "A", "B", "C", "D", "E", "F", "G", "H", "I",
-#     "J", "K", "L", "M", "N", "O", "P", "Q", "R",
-#     "S", "T", "U", "V", "W", "X", "Y", "Z", "$"
-# ]
-
-
-
-# def is_terminal(symbol: str) -> Terminal | None:
-#     return symbol if symbol.islower() else None # type: ignore
-
-# def is_nonterminal(symbol: str) -> NonTerminal | None:
-#     if symbol.isupper() or symbol == ROOT_RULE:
-#         return symbol # type: ignore
-#     return None
-
-# # Upper case -> non-terminal
-# # Lower case -> terminal
 
 def is_terminal(symbol: Union[str, int]) -> str | None:
     if isinstance(symbol, int):
@@ -84,7 +60,7 @@ class Grammar:
 @dataclass(frozen=True)
 class State:
     name: int
-    expr: str
+    expr: list[Union[int, str]]
     pos: int = 0
     start: int = 0
 
@@ -105,7 +81,8 @@ class State:
     def __repr__(self) -> str:
         return f'[{self.start}] {self.name} -> ' + \
             f'{self.expr[:self.pos]}•{self.expr[self.pos:]}'
-
+    def __hash__(self):
+        return hash((self.name, tuple(self.expr), self.pos, self.start))
 END_SYMBOL = "."
 
 @dataclass
@@ -177,7 +154,7 @@ class Parser:
         for i, state in enumerate(self.state_set):
             if i < pos:
                 continue
-            accept = any(s.name == ROOT_RULE and s.terminated() for s in state)
+            accept = any(s.name == root_rule_number and s.terminated() for s in state)
             print(f"State {i}: {text[:i]}•{text[i:]} {accept=}")
             print("\n".join(f"  {s}" for s in state))
 
@@ -203,7 +180,4 @@ grammar = Grammar.parse(
 )
 
 # print(Parser(grammar))
-print(grammar)
-print(ROOT_RULE)
-print(root_rule_number)
-Parser(grammar).read("ab")
+Parser(grammar).read("ab").read("c").read("c")
