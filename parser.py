@@ -175,7 +175,8 @@ class Parser:
             self._consume(token)
         self._print(length)
         return self
-
+# In my realization, $ shouldn't have multiple rules. i.e.
+# $ ::= Array | Object is undefined.
 grammar = Grammar.parse(
     """
     $ ::= Json
