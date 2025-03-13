@@ -178,8 +178,8 @@ class Parser:
 
 grammar = Grammar.parse(
     """
-    $ ::= json
-    json ::= Array | Object
+    $ ::= Json
+    Json ::= Array | Object
     Array ::= LeftBrace Element RightBrace
     Object ::= LeftBracket ObjectElement RightBracket
     LeftBrace ::= [
