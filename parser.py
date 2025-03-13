@@ -2,8 +2,8 @@ from dataclasses import dataclass
 from typing import List, Set, Tuple, Literal, Union
 # Modified based on DarkSharpness's code
 
-ROOT_RULE= 0
-ROOT_RULE_NUMBER = 0
+ROOT_RULE= "$"
+root_rule_number = 0
 # Terminal = Literal[
 #     "a", "b", "c", "d", "e", "f", "g", "h", "i",
 #     "j", "k", "l", "m", "n", "o", "p", "q", "r",
@@ -63,7 +63,8 @@ class Grammar:
             lhs, rhs = line.split("::=")
             lhs = lhs.replace(" ", "")
             if(lhs == ROOT_RULE):
-                ROOT_RULE_NUMBER = dict[lhs]
+                global root_rule_number
+                root_rule_number = dict[lhs]
             for rule in rhs.split("|"):
                 processed = []
                 for symbol in rule.split(" "):
@@ -114,7 +115,7 @@ class Parser:
     def __post_init__(self):
         self.state_set: List[Set[State]] = [set()]
         self.inputs: str = ""
-        # self.state_set[0].add(State(*self.grammar[ROOT_RULE_NUMBER][0]))
+        self.state_set[0].add(State(*self.grammar[root_rule_number][0]))
         
     def _complete(self, state: State) -> List[State]:
         results: List[State] = []
@@ -201,5 +202,8 @@ grammar = Grammar.parse(
     """
 )
 
-print(Parser(grammar))
-# Parser(grammar).read("ab")
+# print(Parser(grammar))
+print(grammar)
+print(ROOT_RULE)
+print(root_rule_number)
+Parser(grammar).read("ab")
