@@ -178,8 +178,10 @@ class Parser:
 
 grammar = Grammar.parse(
     """
-    $ ::= Array
+    $ ::= json
+    json ::= Array | Object
     Array ::= LeftBrace Element RightBrace
+    Object ::= LeftBracket ObjectElement RightBracket
     LeftBrace ::= [
     RightBrace ::= ]
     LeftBracket ::= {
@@ -187,14 +189,18 @@ grammar = Grammar.parse(
     Quote ::= "
     Comma ::= ,
     Dot ::= .
+    Colon ::= :
+    ObjectElement ::= String Colon Value Comma ObjectElement | String Colon Value
     Element ::= Value Comma Element | Value
-    Value ::= String | Int | Float
+    Value ::= String | Int | Float | Object | Array | Bool | Null
     Float ::= Int Dot Int
     Int ::= XGRAMMAR_DIGIT_FLAG | Int XGRAMMAR_DIGIT_FLAG
     String ::= Quote Quote | Quote chars Quote 
     chars ::= XGRAMMAR_EVERYTHING_FLAG | chars XGRAMMAR_EVERYTHING_FLAG
+    Bool ::= true | false
+    Null ::= null
     """
 )
 
 # print(Parser(grammar))
-Parser(grammar).read("[12,\"\dwqijwq\",0.234]")
+Parser(grammar).read("{\"KEY\":[12,\"\dwqijwq\",0.234]}")
