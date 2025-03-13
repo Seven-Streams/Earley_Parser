@@ -5,6 +5,9 @@ from typing import List, Set, Tuple, Literal, Union
 ROOT_RULE= "$"
 root_rule_number = 0
 
+
+
+# We use int to represent non-terminal symbols and str to represent terminal symbols.
 def is_terminal(symbol: Union[str, int]) -> str | None:
     if isinstance(symbol, int):
         return None
@@ -173,11 +176,22 @@ class Parser:
 
 grammar = Grammar.parse(
     """
-    $ ::= A
-    A ::= a A B | b | c
-    B ::= A | a |
+    $ ::= Array
+    Array ::= LeftBrace Element RightBrace
+    LeftBrace ::= [
+    RightBrace ::= ]
+    LeftBracket ::= {
+    RightBracket ::= }
+    Quote ::= "
+    Comma ::= ,
+    Element ::= Element Comma Element | Value
+    Value ::= String | Int | Array
+    Int ::= Digit | Digit Int
+    String ::= Quote Char Quote | Quote Char String Quote 
+    Char ::= a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q | r | s | t | u | v | w | x | y | z | A | B | C | D | E | F | G | H | I | J | K | L | M | N | O | P | Q | R | S | T | U | V | W | X | Y | Z
+    Digit ::= 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
     """
 )
 
 # print(Parser(grammar))
-Parser(grammar).read("ab").read("c").read("c")
+Parser(grammar).read("[\"a\",230,[\"b\",[\"c\"]]]")
