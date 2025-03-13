@@ -177,6 +177,8 @@ class Parser:
         return self
 # In my realization, $ shouldn't have multiple rules. i.e.
 # $ ::= Array | Object is undefined.
+# If we want to use a rule to parse a "word", 
+# we need to use whitespace to separate them.
 grammar = Grammar.parse(
     """
     $ ::= Json
@@ -198,10 +200,10 @@ grammar = Grammar.parse(
     Int ::= XGRAMMAR_DIGIT_FLAG | Int XGRAMMAR_DIGIT_FLAG
     String ::= Quote Quote | Quote chars Quote 
     chars ::= XGRAMMAR_EVERYTHING_FLAG | chars XGRAMMAR_EVERYTHING_FLAG
-    Bool ::= true | false
-    Null ::= null
+    Bool ::= t r u e | f a l s e
+    Null ::= n u l l
     """
 )
 
 # print(Parser(grammar))
-Parser(grammar).read("{\"KEY\":[12,\"\dwqijwq\",0.234]}")
+Parser(grammar).read("[null]")
