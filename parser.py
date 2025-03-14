@@ -113,7 +113,7 @@ class Parser:
         ]
 
     def _scan(self, state: State, start: int, token: str):
-        if state.symbol() == token or state.symbol() == XGRAMMAR_EVERYTHING_FLAG or (token.isdigit() and state.symbol() == XGRAMMAR_DIGIT_FLAG) or token == " ":
+        if state.symbol() == token or state.symbol() == XGRAMMAR_EVERYTHING_FLAG or (token.isdigit() and state.symbol() == XGRAMMAR_DIGIT_FLAG):
             self.state_set[start + 1].add(next(state))
 
     def _consume(self, text: str):
@@ -206,4 +206,4 @@ grammar = Grammar.parse(
 )
 
 # print(Parser(grammar))
-Parser(grammar).read("[null]")
+Parser(grammar).read("[{\"a\":true},null]")
