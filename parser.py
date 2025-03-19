@@ -8,6 +8,7 @@ root_rule_number = 0
 # The following flags are used to represent a universal symbol.
 XGRAMMAR_EVERYTHING_FLAG = "XGRAMMAR_EVERYTHING_FLAG"
 XGRAMMAR_DIGIT_FLAG = "XGRAMMAR_DIGIT_FLAG"
+XGRAMMAR_HEX_FLAG = "XGRAMMAR_HEX_FLAG"
 
 # We use int to represent non-terminal symbols and str to represent terminal symbols.
 def is_terminal(symbol: Union[str, int]) -> str | None:
@@ -113,7 +114,7 @@ class Parser:
         ]
 
     def _scan(self, state: State, start: int, token: str):
-        if state.symbol() == token or state.symbol() == XGRAMMAR_EVERYTHING_FLAG or (token.isdigit() and state.symbol() == XGRAMMAR_DIGIT_FLAG):
+        if state.symbol() == token or (state.symbol() == XGRAMMAR_EVERYTHING_FLAG and state.symbol() != "\\") or (token.isdigit() and state.symbol() == XGRAMMAR_DIGIT_FLAG) or (state.symbol() == XGRAMMAR_HEX_FLAG and token in "0123456789abcdefABCDEF"):
             self.state_set[start + 1].add(next(state))
 
     def _consume(self, text: str):
@@ -199,11 +200,13 @@ grammar = Grammar.parse(
     Float ::= Int Dot Int
     Int ::= XGRAMMAR_DIGIT_FLAG | Int XGRAMMAR_DIGIT_FLAG
     String ::= Quote Quote | Quote chars Quote 
-    chars ::= XGRAMMAR_EVERYTHING_FLAG | chars XGRAMMAR_EVERYTHING_FLAG
+    chars ::= XGRAMMAR_EVERYTHING_FLAG | chars XGRAMMAR_EVERYTHING_FLAG | chars escaped | escaped
+    escaped ::= escaped_char Quote | escaped_char / | escaped_char n | escaped_char b | escaped_char f | escaped_char r | escaped_char t | escaped_char u XGRAMMAR_HEX_FLAG XGRAMMAR_HEX_FLAG XGRAMMAR_HEX_FLAG XGRAMMAR_HEX_FLAG
+    escaped_char ::= \\
     Bool ::= t r u e | f a l s e
     Null ::= n u l l
     """
 )
 
 # print(Parser(grammar))
-Parser(grammar).read("[{\"a\":true},null]")
+Parser(grammar).read("[{\"a\":\"\\u13DF\"},null]")
