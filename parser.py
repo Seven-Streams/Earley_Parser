@@ -6,9 +6,9 @@ ROOT_RULE= "$"
 root_rule_number = 0
 
 # The following flags are used to represent a universal symbol.
-XGRAMMAR_EVERYTHING_FLAG = "XGRAMMAR_EVERYTHING_FLAG"
-XGRAMMAR_DIGIT_FLAG = "XGRAMMAR_DIGIT_FLAG"
-XGRAMMAR_HEX_FLAG = "XGRAMMAR_HEX_FLAG"
+XGRAMMAR_EVERYTHING_FLAG = "EVERYTHING"
+XGRAMMAR_DIGIT_FLAG = "DIGIT"
+XGRAMMAR_HEX_FLAG = "HEX"
 
 # We use int to represent non-terminal symbols and str to represent terminal symbols.
 def is_terminal(symbol: Union[str, int]) -> str | None:
@@ -190,10 +190,10 @@ grammar = Grammar.parse(
     Element ::= Value , Element | Value
     Value ::= String | Int | Float | Object | Array | Bool | Null
     Float ::= Int . Int
-    Int ::= XGRAMMAR_DIGIT_FLAG | Int XGRAMMAR_DIGIT_FLAG
+    Int ::= DIGIT | Int DIGIT
     String ::= " " | " chars " 
-    chars ::= XGRAMMAR_EVERYTHING_FLAG | chars XGRAMMAR_EVERYTHING_FLAG | chars escaped | escaped
-    escaped ::= \ " | \ / | \ n | \ b | \ f | \ r | \ t | \ u XGRAMMAR_HEX_FLAG XGRAMMAR_HEX_FLAG XGRAMMAR_HEX_FLAG XGRAMMAR_HEX_FLAG
+    chars ::= EVERYTHING | chars EVERYTHING | chars escaped | escaped
+    escaped ::= \ " | \ / | \ n | \ b | \ f | \ r | \ t | \ u HEX HEX HEX HEX
     Bool ::= t r u e | f a l s e
     Null ::= n u l l
     """
