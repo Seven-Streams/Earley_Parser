@@ -193,8 +193,7 @@ grammar = Grammar.parse(
     Int ::= DIGIT | Int DIGIT | - Int
     String ::= " " | " chars " 
     chars ::= EVERYTHING | chars EVERYTHING | chars escaped | escaped
-    escaped ::= \ "  | \ /  | \ n  | \ b  | \ f  | \ r | \ t 
-    | \ u HEX HEX HEX HEX
+    escaped ::= \ "  | \ /  | \ n  | \ b  | \ f  | \ r | \ t | \ u HEX HEX HEX HEX
     Bool ::= t r u e | f a l s e
     Null ::= n u l l
     """
