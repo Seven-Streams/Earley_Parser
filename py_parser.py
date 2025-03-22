@@ -17,6 +17,8 @@ IF_FLAG = "IF_FLAG"
 NEED_IF_FLAG = "NEED_IF_FLAG"
 COMPLETE_FLAG = "COMPLETE_FLAG"
 WHITE_SPACE_FLAG = "WHITE_SPACE_FLAG"
+OR_FLAG = "OR_FLAG"
+VARIABLE_FLAG = "VARIABLE_FLAG"
 
 loop_rules = set()
 def_rules = set()
@@ -177,7 +179,12 @@ class Parser:
         ]
 
     def _scan(self, state: State, start: int, token: str):
-        if state.symbol() == token or (state.symbol() == XGRAMMAR_EVERYTHING_FLAG and state.symbol() != "\\") or (state.symbol() == WHITE_SPACE_FLAG and token == " "):
+        if state.symbol() == token \
+        or (state.symbol() == XGRAMMAR_EVERYTHING_FLAG and state.symbol() != "\\") \
+        or (state.symbol() == WHITE_SPACE_FLAG and token == " ") \
+        or (state.symbol() == VARIABLE_FLAG \
+            and token in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_") \
+        or (state.symbol() == OR_FLAG and token == "|"):
             self.state_set[start + 1].add(next(state))
 
     def _consume(self, text: str):      
@@ -254,8 +261,8 @@ class Parser:
         for i, state in enumerate(self.state_set):
             if i < pos:
                 continue
-            accept = any(s.name == root_rule_number and s.terminated() for s in state)
-            print(f"State {i}: {text[:i]}•{text[i:]} {accept=}")
+            # accept = any(s.name == root_rule_number and s.terminated() for s in state)
+            # print(f"State {i}: {text[:i]}•{text[i:]} {accept=}")
             print("\n".join(f"  {s}" for s in state))
             for s in state:
                 if s.name == root_rule_number and s.terminated():
@@ -330,7 +337,8 @@ class Parser:
 # NEED_IF_FLAG = "NEED_IF_FLAG"
 # COMPLETE_FLAG = "COMPLETE_FLAG"
 # WHITE_SPACE_FLAG = "WHITE_SPACE_FLAG"
-# issue: | is not supported in the grammar.
+# OR_FLAG = "OR_FLAG"
+# VARIABLE_FLAG = "VARIABLE_FLAG"
 
 grammar = Grammar.parse(
     """
@@ -349,8 +357,8 @@ grammar = Grammar.parse(
     break_statement ::= b r e a k NEED_LOOP_FLAG COMPLETE_FLAG
     continue_statement ::= c o n t i n u e NEED_LOOP_FLAG COMPLETE_FLAG
     return_statement ::= r e t u r n whitespaces expr NEED_DEF_FLAG COMPLETE_FLAG | r e t u r n NEED_DEF_FLAG COMPLETE_FLAG
-    assign_op ::= = | + = | - = | * = | / = | % = | & =  | ^ = | < < = | > > = | * * =
-    expr_binary_op ::= + | - | * | / | % | & | ^ | < < | > > | * * | = = | ! = | < | > | < = | > = | a n d | o r 
+    assign_op ::= = | + = | - = | * = | / = | % = | & =  | ^ = | < < = | > > = | * * = | OR_FLAG = 
+    expr_binary_op ::= + | - | * | / | % | & | ^ | < < | > > | * * | = = | ! = | < | > | < = | > = | a n d | o r | OR_FLAG
     expr_unary_op ::= + | - | ~ | n o t
     in_args ::= in_args , expr | expr
     func_call ::= variable ( in_args ) | variable ( )
@@ -358,7 +366,7 @@ grammar = Grammar.parse(
     expr_raw ::= Int | Float | String | Bool | variable | func_call | expr expr_binary_op expr | expr_unary_op expr | ( expr ) | variable assign_op expr
     variable ::= variable_raw | whitespaces variable_raw | variable whitespaces | whitespaces variable whitespaces
     variable_raw ::= variable_char | variable variable_char | variable DIGIT
-    variable_char ::= a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q | r | s | t | u | v | w | x | y | z | A | B | C | D | E | F | G | H | I | J | K | L | M | N | O | P | Q | R | S | T | U | V | W | X | Y | Z | _ 
+    variable_char ::= VARIABLE_FLAG
     chars ::= EVERYTHING | chars EVERYTHING | chars escaped | escaped
     escaped ::= \\ \\ | \\ "  | \\ n  | \\ b  | \\ f  | \\ r | \\ t 
     Bool ::= T r u e | F a l s e
@@ -367,6 +375,8 @@ grammar = Grammar.parse(
     """
 )
 
+# for key, value in global_rule_dict.items():
+#     print(key, value)
 # print(Parser(grammar))
 
 #verdict: pass
@@ -436,7 +446,7 @@ Parser(grammar, [], []).read(
     """
 def count_even_numbers(limit):
     count = 0
-    number = 1
+    number |= 1
     while number <= limit:
         if number % 2 == 0:
             count = count + 1
