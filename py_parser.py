@@ -330,16 +330,17 @@ class Parser:
 # COMPLETE_FLAG = "COMPLETE_FLAG"
 # WHITE_SPACE_FLAG = "WHITE_SPACE_FLAG"
 # issue: | is not supported in the grammar.
+
 grammar = Grammar.parse(
     """
     $ ::= python
-    python ::= assign_statement | if_statement | else_statement | while_statement | for_statement | break_statement | continue_statement | return_statement | function_definition
+    python ::= assign_statement | if_statement | else_statement | while_statement | for_statement | break_statement | continue_statement | return_statement | function_definition | expr_statement
     function_definition ::= d e f whitespaces variable ( args ) : FORCE_FLAG DEF_FLAG COMPLETE_FLAG | d e f whitespaces variable ( ) : FORCE_FLAG DEF_FLAG COMPLETE_FLAG 
     args ::= variable | args , variable
     Float ::= Int . Int 
     Int ::= DIGIT | Int DIGIT 
     String ::= " " | " chars " 
-    assign_statement ::= variable assign_op expr COMPLETE_FLAG
+    expr_statement ::= expr COMPLETE_FLAG
     if_statement ::= i f whitespaces expr : FORCE_FLAG IF_FLAG COMPLETE_FLAG
     else_statement ::= e l s e : NEED_IF_FLAG COMPLETE_FLAG FORCE_FLAG
     while_statement ::= w h i l e whitespaces expr : LOOP_FLAG COMPLETE_FLAG
@@ -364,11 +365,6 @@ grammar = Grammar.parse(
 )
 # print(Parser(grammar))
 Parser(grammar, [], []).read(
-"""a=1
-b=2
-if a==1:
-    b=1
-else:
-    b=2
+"""print()
 """    
 )
