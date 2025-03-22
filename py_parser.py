@@ -14,12 +14,16 @@ DEF_FLAG = "DEF_FLAG"
 FORCE_FLAG = "FORCE_FLAG"
 NEED_LOOP_FLAG = "NEED_LOOP_FLAG"
 NEED_DEF_FLAG = "NEED_DEF_FLAG"
+IF_FLAG = "IF_FLAG"
+NEED_IF_FLAG = "NEED_IF_FLAG"
 
 loop_rules = set()
 def_rules = set()
 force_rules = set()
+if_rules = set()
 need_loop_rules = set()
 need_def_rules = set()
+need_if_rules = set()
 
 # We use int to represent non-terminal symbols and str to represent terminal symbols.
 def is_terminal(symbol: Union[str, int]) -> str | None:
@@ -42,6 +46,8 @@ class Grammar:
         global force_rules
         global need_def_rules
         global need_loop_rules
+        global if_rules
+        global need_if_rules
         rule_dict = {str:int}
         cnt = 0
         results = []
@@ -81,6 +87,12 @@ class Grammar:
                         continue
                     if(symbol == NEED_DEF_FLAG):
                         need_def_rules.add(rule_dict[lhs])
+                        continue
+                    if(symbol == IF_FLAG):
+                        if_rules.add(rule_dict[lhs])
+                        continue
+                    if(symbol == NEED_IF_FLAG):
+                        need_if_rules.add(rule_dict[lhs])
                         continue
                     if(symbol == ""):
                         continue
@@ -129,6 +141,7 @@ class Parser:
     # state_stack is used to store the now indent and the corresponding state.
     # for example, in the demo, we need to store the state such as for-sentence.
     loop_indent: List[int]
+    if_indent: List[int]
     define: bool = False
     force_indent:bool = False
     now_indent: int = 0
@@ -170,6 +183,8 @@ class Parser:
                             self.force_indent = False
                         if loop_rules.__contains__(s.name):
                             self.loop_indent.append(self.now_indent)
+                        if if_rules.__contains__(s.name):
+                            self.if_indent.append(self.now_indent)
                         #To check the new lines.
                         if def_rules.__contains__(s.name):
                             self.define = True
@@ -179,6 +194,9 @@ class Parser:
                         if need_def_rules.__contains__(s.name):
                             if not self.define:
                                 raise Exception("Indentation Error: Need Define")
+                        if need_if_rules.__contains__(s.name):
+                            if not self.now_indent in self.if_indent:
+                                raise Exception("Indentation Error: If else Error")
                         self.__post_init__()
                         return
                 
@@ -229,7 +247,7 @@ class Parser:
             print("\n".join(f"  {s}" for s in state))
 
     def _print(self, pos: int) -> None:
-        copy = Parser(self.grammar, self.loop_indent)
+        copy = Parser(self.grammar, self.loop_indent, self.if_indent)
         copy.state_set = self.state_set + []
         copy.inputs = self.inputs + ""
         return copy._finalize(pos)
@@ -254,7 +272,9 @@ class Parser:
                 if self.white_space_cnt % 4 != 0:
                     raise Exception("Indentation Error: Not Multiple of 4")
                 # Too deep indentation.
-                if (self.now_indent < self.white_space_cnt - 4) or not self.force_indent:
+                if (self.now_indent < self.white_space_cnt - 4):
+                    raise Exception("Indentation Error: Too Deep Indentation")
+                if (self.now_indent == self.white_space_cnt - 4) and not self.force_indent:
                     raise Exception("Indentation Error: Too Deep Indentation")
                 # The forced indentation is not satisfied.
                 if self.force_indent and self.now_indent != self.white_space_cnt - 4:
@@ -272,6 +292,8 @@ class Parser:
                         self.define = False
                         while(self.loop_indent != [] and self.loop_indent[-1] > self.now_indent):
                             self.loop_indent.pop()
+                        while(self.if_indent != [] and self.if_indent[-1] > self.now_indent):
+                            self.if_indent.pop()
                 self.line_start = False
                           
             self._consume(token)
@@ -281,23 +303,46 @@ class Parser:
 # $ ::= Array | Object is undefined.
 # If we want to use a rule to parse a "word", 
 # we need to use whitespace to separate them.
+# XGRAMMAR_EVERYTHING_FLAG = "EVERYTHING"
+# XGRAMMAR_DIGIT_FLAG = "DIGIT"
+# XGRAMMAR_HEX_FLAG = "HEX"
+# LOOP_FLAG = "LOOP_FLAG"
+# DEF_FLAG = "DEF_FLAG"
+# FORCE_FLAG = "FORCE_FLAG"
+# NEED_LOOP_FLAG = "NEED_LOOP_FLAG"
+# NEED_DEF_FLAG = "NEED_DEF_FLAG"
+# IF_FLAG = "IF_FLAG"
+# NEED_IF_FLAG = "NEED_IF_FLAG"
 grammar = Grammar.parse(
     """
-    $ ::= T E S T
+    $ ::= function_definition | statement
+    function_definition ::= d e f variable ( args ) : FORCE_FLAG DEF)FLAG | d e f variable ( ) : FORCE_FLAG DEF_FLAG
+    args ::= variable | args , variable
+    Float ::= Int . Int | - Int . Int
+    Int ::= DIGIT | Int DIGIT | - Int
+    String ::= " " | " chars " 
+    assign_statement ::= variable assign_op expr
+    if_statement ::= i f expr : FORCE_FLAG IF_FLAG
+    else_statement ::= e l s e : NEED_IF_FLAG
+    while_statement ::= w h i l e expr : LOOP_FLAG
+    for_statement ::= f o r variable i n expr : LOOP_FLAG
+    break_statement ::= b r e a k NEED_LOOP_FLAG
+    continue_statement ::= c o n t i n u e NEED_LOOP_FLAG
+    return_statement ::= r e t u r n expr NEED_DEF_FLAG
+    statement ::= assign_statement | if_statement | else_statement | while_statement | for_statement | break_statement | continue_statement | return_statement
+    assign_op ::= = | += | -= | *= | /= | %= | &= | |= | ^= | <<= | >>= | **=
+    expr_binary_op ::= + | - | * | / | % | & | | | ^ | << | >> | ** | == | != | < | > | <= | >= | and | or 
+    expr_unary_op ::= + | - | ~ | not
+    in_args ::= in_args , expr | expr
+    func_call ::= variable ( in_args ) | variable ( )
+    expr ::= Int | Float | String | Bool | variable | func_call | expr expr_binary_op expr | expr_unary_op expr | ( expr ) | variable assign_op expr
+    variable ::= variable_char | variable variable_char | variable DIGIT
+    variable_char ::= a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q | r | s | t | u | v | w | x | y | z | A | B | C | D | E | F | G | H | I | J | K | L | M | N | O | P | Q | R | S | T | U | V | W | X | Y | Z | _ 
+    chars ::= EVERYTHING | chars EVERYTHING | chars escaped | escaped
+    escaped ::= \ \ | \ "  | \ n  | \ b  | \ f  | \ r | \ t | 
+    Bool ::= T r u e | F a l s e
     """
 )
-    # """
-    # $ ::= function_definition | statement
-    # function_definition ::= def string ( args ) : 
-    # args ::= string | args , string
-    # Float ::= Int . Int | - Int . Int
-    # Int ::= DIGIT | Int DIGIT | - Int
-    # String ::= " " | " chars " 
-    # chars ::= EVERYTHING | chars EVERYTHING | chars escaped | escaped
-    # escaped ::= \ "  | \ /  | \ n  | \ b  | \ f  | \ r | \ t 
-    # Bool ::= t r u e | f a l s e
-    # Null ::= n u l l
-    # """
 
 # print(Parser(grammar))
-Parser(grammar, []).read("    TEST")
+Parser(grammar, []).read("TEST\n").read("\n").read("TEST")
