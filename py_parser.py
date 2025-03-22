@@ -7,7 +7,6 @@ root_rule_number = 0
 
 # The following flags are used to represent a universal symbol.
 XGRAMMAR_EVERYTHING_FLAG = "EVERYTHING"
-XGRAMMAR_DIGIT_FLAG = "DIGIT"
 XGRAMMAR_HEX_FLAG = "HEX"
 LOOP_FLAG = "LOOP_FLAG"
 DEF_FLAG = "DEF_FLAG"
@@ -16,6 +15,8 @@ NEED_LOOP_FLAG = "NEED_LOOP_FLAG"
 NEED_DEF_FLAG = "NEED_DEF_FLAG"
 IF_FLAG = "IF_FLAG"
 NEED_IF_FLAG = "NEED_IF_FLAG"
+COMPLETE_FLAG = "COMPLETE_FLAG"
+WHITE_SPACE_FLAG = "WHITE_SPACE_FLAG"
 
 loop_rules = set()
 def_rules = set()
@@ -24,6 +25,8 @@ if_rules = set()
 need_loop_rules = set()
 need_def_rules = set()
 need_if_rules = set()
+complete_line_rules = set()
+global_rule_dict = {}
 
 # We use int to represent non-terminal symbols and str to represent terminal symbols.
 def is_terminal(symbol: Union[str, int]) -> str | None:
@@ -48,6 +51,7 @@ class Grammar:
         global need_loop_rules
         global if_rules
         global need_if_rules
+        global complete_line_rules
         rule_dict = {str:int}
         cnt = 0
         results = []
@@ -94,6 +98,10 @@ class Grammar:
                     if(symbol == NEED_IF_FLAG):
                         need_if_rules.add(rule_dict[lhs])
                         continue
+                    if(symbol == COMPLETE_FLAG):
+                        complete_line_rules.add(rule_dict[lhs])
+                        processed.append("\n")
+                        continue
                     if(symbol == ""):
                         continue
                     if symbol in rule_dict:
@@ -102,6 +110,8 @@ class Grammar:
                         processed.append(symbol)    
                 if(processed != []):
                     results += [(cnt, processed)]
+        global global_rule_dict
+        global_rule_dict = rule_dict
         return Grammar(tuple(results))
 
     def __getitem__(self, symbol: str) -> List[Tuple[int, str]]:
@@ -166,16 +176,37 @@ class Parser:
         ]
 
     def _scan(self, state: State, start: int, token: str):
-        if state.symbol() == token or (state.symbol() == XGRAMMAR_EVERYTHING_FLAG and state.symbol() != "\\") or (token.isdigit() and state.symbol() == XGRAMMAR_DIGIT_FLAG) or (state.symbol() == XGRAMMAR_HEX_FLAG and token in "0123456789abcdefABCDEF"):
+        if state.symbol() == token or (state.symbol() == XGRAMMAR_EVERYTHING_FLAG and state.symbol() != "\\") or (state.symbol() == WHITE_SPACE_FLAG and token == " "):
             self.state_set[start + 1].add(next(state))
 
-    def _consume(self, text: str):
+    def _consume(self, text: str):      
+        terminal = is_terminal(text)
+        assert terminal is not None and len(terminal) == 1
+        self.inputs += terminal
 
+        queue = list(self.state_set.pop())
+        new_set = set()
+        cur_pos = len(self.state_set)
+        self.state_set.append(new_set)
+        self.state_set.append(set())
+
+        while queue:
+            state = queue.pop(0)
+            if state in new_set:
+                continue
+            new_set.add(state)
+            if state.terminated():
+                queue += self._complete(state)
+            elif nt := state.nonterminal_symbol():
+                queue += self._predict(cur_pos, nt)
+            else:
+                self._scan(state, cur_pos, terminal)
         # If the text is a new line.
         if(text == "\n"):
             for state in self.state_set:
                 for s in state:
-                    if s.terminated():
+                    if s.terminated() and s.name in complete_line_rules:
+                        print(s)
                         #Detect the loop.
                         if force_rules.__contains__(s.name):
                             self.force_indent = True
@@ -200,28 +231,8 @@ class Parser:
                         self.__post_init__()
                         return
                 
-            raise Exception("Syntax Error")        
-        terminal = is_terminal(text)
-        assert terminal is not None and len(terminal) == 1
-        self.inputs += terminal
+            raise Exception("Syntax Error")                  
 
-        queue = list(self.state_set.pop())
-        new_set = set()
-        cur_pos = len(self.state_set)
-        self.state_set.append(new_set)
-        self.state_set.append(set())
-
-        while queue:
-            state = queue.pop(0)
-            if state in new_set:
-                continue
-            new_set.add(state)
-            if state.terminated():
-                queue += self._complete(state)
-            elif nt := state.nonterminal_symbol():
-                queue += self._predict(cur_pos, nt)
-            else:
-                self._scan(state, cur_pos, terminal)
     def _finalize(self, pos: int):
         queue = list(self.state_set.pop())
         new_set = set()
@@ -245,6 +256,10 @@ class Parser:
             accept = any(s.name == root_rule_number and s.terminated() for s in state)
             print(f"State {i}: {text[:i]}•{text[i:]} {accept=}")
             print("\n".join(f"  {s}" for s in state))
+            for s in state:
+                if s.name == root_rule_number and s.terminated():
+                    print(s)
+                   
 
     def _print(self, pos: int) -> None:
         copy = Parser(self.grammar, self.loop_indent, self.if_indent)
@@ -304,7 +319,6 @@ class Parser:
 # If we want to use a rule to parse a "word", 
 # we need to use whitespace to separate them.
 # XGRAMMAR_EVERYTHING_FLAG = "EVERYTHING"
-# XGRAMMAR_DIGIT_FLAG = "DIGIT"
 # XGRAMMAR_HEX_FLAG = "HEX"
 # LOOP_FLAG = "LOOP_FLAG"
 # DEF_FLAG = "DEF_FLAG"
@@ -313,36 +327,48 @@ class Parser:
 # NEED_DEF_FLAG = "NEED_DEF_FLAG"
 # IF_FLAG = "IF_FLAG"
 # NEED_IF_FLAG = "NEED_IF_FLAG"
+# COMPLETE_FLAG = "COMPLETE_FLAG"
+# WHITE_SPACE_FLAG = "WHITE_SPACE_FLAG"
+# issue: | is not supported in the grammar.
 grammar = Grammar.parse(
     """
-    $ ::= function_definition | statement
-    function_definition ::= d e f variable ( args ) : FORCE_FLAG DEF)FLAG | d e f variable ( ) : FORCE_FLAG DEF_FLAG
+    $ ::= python
+    python ::= assign_statement | if_statement | else_statement | while_statement | for_statement | break_statement | continue_statement | return_statement | function_definition
+    function_definition ::= d e f whitespaces variable ( args ) : FORCE_FLAG DEF_FLAG COMPLETE_FLAG | d e f whitespaces variable ( ) : FORCE_FLAG DEF_FLAG COMPLETE_FLAG 
     args ::= variable | args , variable
-    Float ::= Int . Int | - Int . Int
-    Int ::= DIGIT | Int DIGIT | - Int
+    Float ::= Int . Int 
+    Int ::= DIGIT | Int DIGIT 
     String ::= " " | " chars " 
-    assign_statement ::= variable assign_op expr
-    if_statement ::= i f expr : FORCE_FLAG IF_FLAG
-    else_statement ::= e l s e : NEED_IF_FLAG
-    while_statement ::= w h i l e expr : LOOP_FLAG
-    for_statement ::= f o r variable i n expr : LOOP_FLAG
-    break_statement ::= b r e a k NEED_LOOP_FLAG
-    continue_statement ::= c o n t i n u e NEED_LOOP_FLAG
-    return_statement ::= r e t u r n expr NEED_DEF_FLAG
-    statement ::= assign_statement | if_statement | else_statement | while_statement | for_statement | break_statement | continue_statement | return_statement
-    assign_op ::= = | += | -= | *= | /= | %= | &= | |= | ^= | <<= | >>= | **=
-    expr_binary_op ::= + | - | * | / | % | & | | | ^ | << | >> | ** | == | != | < | > | <= | >= | and | or 
-    expr_unary_op ::= + | - | ~ | not
+    assign_statement ::= variable assign_op expr COMPLETE_FLAG
+    if_statement ::= i f whitespaces expr : FORCE_FLAG IF_FLAG COMPLETE_FLAG
+    else_statement ::= e l s e : NEED_IF_FLAG COMPLETE_FLAG FORCE_FLAG
+    while_statement ::= w h i l e whitespaces expr : LOOP_FLAG COMPLETE_FLAG
+    for_statement ::= f o r whitespaces variable whitespaces i n whitespaces expr : LOOP_FLAG COMPLETE_FLAG
+    break_statement ::= b r e a k NEED_LOOP_FLAG COMPLETE_FLAG
+    continue_statement ::= c o n t i n u e NEED_LOOP_FLAG COMPLETE_FLAG
+    return_statement ::= r e t u r n whitespaces expr NEED_DEF_FLAG COMPLETE_FLAG | r e t u r n NEED_DEF_FLAG COMPLETE_FLAG
+    assign_op ::= = | + = | - = | * = | / = | % = | & =  | ^ = | < < = | > > = | * * =
+    expr_binary_op ::= + | - | * | / | % | & | ^ | < < | > > | * * | = = | ! = | < | > | < = | > = | a n d | o r 
+    expr_unary_op ::= + | - | ~ | n o t
     in_args ::= in_args , expr | expr
     func_call ::= variable ( in_args ) | variable ( )
     expr ::= Int | Float | String | Bool | variable | func_call | expr expr_binary_op expr | expr_unary_op expr | ( expr ) | variable assign_op expr
     variable ::= variable_char | variable variable_char | variable DIGIT
     variable_char ::= a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q | r | s | t | u | v | w | x | y | z | A | B | C | D | E | F | G | H | I | J | K | L | M | N | O | P | Q | R | S | T | U | V | W | X | Y | Z | _ 
     chars ::= EVERYTHING | chars EVERYTHING | chars escaped | escaped
-    escaped ::= \ \ | \ "  | \ n  | \ b  | \ f  | \ r | \ t | 
+    escaped ::= \\ \\ | \\ "  | \\ n  | \\ b  | \\ f  | \\ r | \\ t 
     Bool ::= T r u e | F a l s e
+    DIGIT ::= 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
+    whitespaces ::= WHITE_SPACE_FLAG | whitespaces WHITE_SPACE_FLAG
     """
 )
-
 # print(Parser(grammar))
-Parser(grammar, []).read("TEST\n").read("\n").read("TEST")
+Parser(grammar, [], []).read(
+"""a=1
+b=2
+if a==1:
+    b=1
+else:
+    b=2
+"""    
+)
