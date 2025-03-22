@@ -344,7 +344,7 @@ grammar = Grammar.parse(
     if_statement ::= i f whitespaces expr : FORCE_FLAG IF_FLAG COMPLETE_FLAG
     else_statement ::= e l s e : NEED_IF_FLAG COMPLETE_FLAG FORCE_FLAG
     while_statement ::= w h i l e whitespaces expr : LOOP_FLAG COMPLETE_FLAG
-    for_statement ::= f o r whitespaces variable whitespaces i n whitespaces expr : LOOP_FLAG COMPLETE_FLAG
+    for_statement ::= f o r whitespaces variable whitespaces i n whitespaces expr : LOOP_FLAG COMPLETE_FLAG FORCE_FLAG
     break_statement ::= b r e a k NEED_LOOP_FLAG COMPLETE_FLAG
     continue_statement ::= c o n t i n u e NEED_LOOP_FLAG COMPLETE_FLAG
     return_statement ::= r e t u r n whitespaces expr NEED_DEF_FLAG COMPLETE_FLAG | r e t u r n NEED_DEF_FLAG COMPLETE_FLAG
@@ -364,7 +364,38 @@ grammar = Grammar.parse(
     """
 )
 # print(Parser(grammar))
+
+#verdict: pass
+# Parser(grammar, [], []).read(
+# """
+# a=1
+# b=2
+# if a==1:
+#     print(a)
+# else:
+#     print(b)
+# """    
+# )
+
+# verdict: fail
+# Parser(grammar, [], []).read(
+# """
+# a=1
+# b=2
+# if a==1:
+# print(a)
+# else:
+# print(b)
+# """    
+# )
+
 Parser(grammar, [], []).read(
-"""print()
+"""
+for i in range(10):
+    for j in range(100):
+        for k in range(1000):
+            for l in range(10000):
+                print(i,j,k,l)
+    break
 """    
 )
