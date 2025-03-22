@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Set, Tuple, Literal, Union
+from typing import List, Set, Tuple, Union
 # Modified based on DarkSharpness's code
 
 ROOT_RULE= "$"

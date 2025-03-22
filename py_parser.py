@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Set, Tuple, Literal, Union
+from typing import List, Set, Tuple, Union
 # Modified based on DarkSharpness's code
 
 ROOT_RULE= "$"
@@ -12,10 +12,14 @@ XGRAMMAR_HEX_FLAG = "HEX"
 LOOP_FLAG = "LOOP_FLAG"
 DEF_FLAG = "DEF_FLAG"
 FORCE_FLAG = "FORCE_FLAG"
+NEED_LOOP_FLAG = "NEED_LOOP_FLAG"
+NEED_DEF_FLAG = "NEED_DEF_FLAG"
 
 loop_rules = Set()
 def_rules = Set()
 force_rules = Set()
+need_loop_rules = Set()
+need_def_rules = Set()
 
 # We use int to represent non-terminal symbols and str to represent terminal symbols.
 def is_terminal(symbol: Union[str, int]) -> str | None:
@@ -35,6 +39,9 @@ class Grammar:
     def parse(rule: str) -> "Grammar":
         global loop_rules
         global def_rules
+        global force_rules
+        global need_def_rules
+        global need_loop_rules
         rule_dict = {str:int}
         cnt = 0
         results = []
@@ -68,6 +75,13 @@ class Grammar:
                         continue
                     if(symbol == FORCE_FLAG):
                         force_rules.add(rule_dict[lhs])
+                        continue
+                    if(symbol == NEED_LOOP_FLAG):
+                        need_loop_rules.add(rule_dict[lhs])
+                        continue
+                    if(symbol == NEED_DEF_FLAG):
+                        need_def_rules.add(rule_dict[lhs])
+                        continue
                     if(symbol == ""):
                         continue
                     if symbol in rule_dict:
@@ -177,10 +191,16 @@ class Parser:
                     #To check the new lines.
                     if def_rules.__contains__(s.name):
                         self.define = True
+                    if need_loop_rules.__contains__(s.name):
+                        if self.loop_indent == []:
+                            raise Exception("Indentation Error: Need Loop")
+                    if need_def_rules.__contains__(s.name):
+                        if not self.define:
+                            raise Exception("Indentation Error: Need Define")
                     self.__post_init__()
-                    break 
+                    return
             
-                raise Exception("Syntax Error")
+            raise Exception("Syntax Error")
 
     def _finalize(self, pos: int):
         queue = list(self.state_set.pop())
@@ -232,7 +252,7 @@ class Parser:
                 if self.white_space_cnt % 4 != 0:
                     raise Exception("Indentation Error: Not Multiple of 4")
                 # Too deep indentation.
-                if (self.now_indent <  self.white_space_cnt - 4):
+                if (self.now_indent < self.white_space_cnt - 4):
                     raise Exception("Indentation Error: Too Deep Indentation")
                 # The forced indentation is not satisfied.
                 if self.force_indent and self.now_indent != self.white_space_cnt - 4:
