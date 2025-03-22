@@ -1,3 +1,4 @@
 /grammar_parser/.antlr
 /grammar_parser/antlr-4.13.2-complete.jar
 compile.sh
+.ruff_cache

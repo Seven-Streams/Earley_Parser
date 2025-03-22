@@ -15,11 +15,11 @@ FORCE_FLAG = "FORCE_FLAG"
 NEED_LOOP_FLAG = "NEED_LOOP_FLAG"
 NEED_DEF_FLAG = "NEED_DEF_FLAG"
 
-loop_rules = Set()
-def_rules = Set()
-force_rules = Set()
-need_loop_rules = Set()
-need_def_rules = Set()
+loop_rules = set()
+def_rules = set()
+force_rules = set()
+need_loop_rules = set()
+need_def_rules = set()
 
 # We use int to represent non-terminal symbols and str to represent terminal symbols.
 def is_terminal(symbol: Union[str, int]) -> str | None:
@@ -128,7 +128,7 @@ class Parser:
     grammar: Grammar
     # state_stack is used to store the now indent and the corresponding state.
     # for example, in the demo, we need to store the state such as for-sentence.
-    loop_indent: List[int] = []
+    loop_indent: List[int]
     define: bool = False
     force_indent:bool = False
     now_indent: int = 0
@@ -157,6 +157,32 @@ class Parser:
             self.state_set[start + 1].add(next(state))
 
     def _consume(self, text: str):
+
+        # If the text is a new line.
+        if(text == "\n"):
+            for state in self.state_set:
+                for s in state:
+                    if s.terminated():
+                        #Detect the loop.
+                        if force_rules.__contains__(s.name):
+                            self.force_indent = True
+                        else:
+                            self.force_indent = False
+                        if loop_rules.__contains__(s.name):
+                            self.loop_indent.append(self.now_indent)
+                        #To check the new lines.
+                        if def_rules.__contains__(s.name):
+                            self.define = True
+                        if need_loop_rules.__contains__(s.name):
+                            if self.loop_indent == []:
+                                raise Exception("Indentation Error: Need Loop")
+                        if need_def_rules.__contains__(s.name):
+                            if not self.define:
+                                raise Exception("Indentation Error: Need Define")
+                        self.__post_init__()
+                        return
+                
+            raise Exception("Syntax Error")        
         terminal = is_terminal(text)
         assert terminal is not None and len(terminal) == 1
         self.inputs += terminal
@@ -178,30 +204,6 @@ class Parser:
                 queue += self._predict(cur_pos, nt)
             else:
                 self._scan(state, cur_pos, terminal)
-        if(text == "\n"):
-            for s in state:
-                if s.terminated():
-                    #Detect the loop.
-                    if force_rules.__contains__(s.name):
-                        self.force_indent = True
-                    else:
-                        self.force_indent = False
-                    if loop_rules.__contains__(s.name):
-                        self.loop_indent.append(self.now_indent)
-                    #To check the new lines.
-                    if def_rules.__contains__(s.name):
-                        self.define = True
-                    if need_loop_rules.__contains__(s.name):
-                        if self.loop_indent == []:
-                            raise Exception("Indentation Error: Need Loop")
-                    if need_def_rules.__contains__(s.name):
-                        if not self.define:
-                            raise Exception("Indentation Error: Need Define")
-                    self.__post_init__()
-                    return
-            
-            raise Exception("Syntax Error")
-
     def _finalize(self, pos: int):
         queue = list(self.state_set.pop())
         new_set = set()
@@ -227,7 +229,7 @@ class Parser:
             print("\n".join(f"  {s}" for s in state))
 
     def _print(self, pos: int) -> None:
-        copy = Parser(self.grammar)
+        copy = Parser(self.grammar, self.loop_indent)
         copy.state_set = self.state_set + []
         copy.inputs = self.inputs + ""
         return copy._finalize(pos)
@@ -252,7 +254,7 @@ class Parser:
                 if self.white_space_cnt % 4 != 0:
                     raise Exception("Indentation Error: Not Multiple of 4")
                 # Too deep indentation.
-                if (self.now_indent < self.white_space_cnt - 4):
+                if (self.now_indent < self.white_space_cnt - 4) or not self.force_indent:
                     raise Exception("Indentation Error: Too Deep Indentation")
                 # The forced indentation is not satisfied.
                 if self.force_indent and self.now_indent != self.white_space_cnt - 4:
@@ -280,7 +282,22 @@ class Parser:
 # If we want to use a rule to parse a "word", 
 # we need to use whitespace to separate them.
 grammar = Grammar.parse(
+    """
+    $ ::= T E S T
+    """
 )
+    # """
+    # $ ::= function_definition | statement
+    # function_definition ::= def string ( args ) : 
+    # args ::= string | args , string
+    # Float ::= Int . Int | - Int . Int
+    # Int ::= DIGIT | Int DIGIT | - Int
+    # String ::= " " | " chars " 
+    # chars ::= EVERYTHING | chars EVERYTHING | chars escaped | escaped
+    # escaped ::= \ "  | \ /  | \ n  | \ b  | \ f  | \ r | \ t 
+    # Bool ::= t r u e | f a l s e
+    # Null ::= n u l l
+    # """
 
 # print(Parser(grammar))
-Parser(grammar).read("[{\"a\":\"\\u13DF\"},null]")
+Parser(grammar, []).read("    TEST")
