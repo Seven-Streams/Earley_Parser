@@ -343,7 +343,7 @@ class Parser:
 grammar = Grammar.parse(
     """
     $ ::= python
-    python ::= assign_statement | if_statement | else_statement | while_statement | for_statement | break_statement | continue_statement | return_statement | function_definition | expr_statement
+    python ::= python whitespaces | assign_statement | if_statement | else_statement | while_statement | for_statement | break_statement | continue_statement | return_statement | function_definition | expr_statement
     function_definition ::= d e f whitespaces variable ( args ) : FORCE_FLAG DEF_FLAG COMPLETE_FLAG | d e f whitespaces variable ( ) : FORCE_FLAG DEF_FLAG COMPLETE_FLAG 
     args ::= args , variable | variable
     Float ::= Int . Int 
