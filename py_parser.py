@@ -343,7 +343,7 @@ grammar = Grammar.parse(
     expr_statement ::= expr COMPLETE_FLAG
     if_statement ::= i f whitespaces expr : FORCE_FLAG IF_FLAG COMPLETE_FLAG
     else_statement ::= e l s e : NEED_IF_FLAG COMPLETE_FLAG FORCE_FLAG
-    while_statement ::= w h i l e whitespaces expr : LOOP_FLAG COMPLETE_FLAG
+    while_statement ::= w h i l e whitespaces expr : LOOP_FLAG COMPLETE_FLAG FORCE_FLAG
     for_statement ::= f o r whitespaces variable whitespaces i n whitespaces expr : LOOP_FLAG COMPLETE_FLAG FORCE_FLAG
     break_statement ::= b r e a k NEED_LOOP_FLAG COMPLETE_FLAG
     continue_statement ::= c o n t i n u e NEED_LOOP_FLAG COMPLETE_FLAG
@@ -389,13 +389,62 @@ grammar = Grammar.parse(
 # """    
 # )
 
+#verdict: pass
+# Parser(grammar, [], []).read(
+# """
+# for i in range(10):
+#     for j in range(100):
+#         for k in range(1000):
+#             for l in range(10000):
+#                 print(i,j,k,l)
+#         print(i)
+#     break
+# """    
+# )
+
+#verdict: pass
+# Parser(grammar, [], []).read(
+# """
+# def f(a,b,c):
+#     return 1
+# def k():
+#     return
+# f(a,b,c)
+# k()
+# """)
+
+
+# verdict: fail
+# Parser(grammar, [], []).read(
+# """
+# return 1
+# """
+# )
+
+# verdict: pass
+# Parser(grammar, [], []).read(
+# """
+# b="\\\\\\n"
+# """
+# )
+
 Parser(grammar, [], []).read(
-"""
-for i in range(10):
-    for j in range(100):
-        for k in range(1000):
-            for l in range(10000):
-                print(i,j,k,l)
-    break
-"""    
+    """
+def count_even_numbers(limit):
+    count=0
+    number=1
+    while number<=limit:
+        if number%2==0:
+            count=count+1
+        number=number+1
+    return count
+
+limit=10
+result=count_even_numbers(limit)
+
+if result>0:
+    print("There are",result,"even numbers.")
+else:
+    print("No even numbers found.")
+    """
 )
