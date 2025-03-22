@@ -110,7 +110,10 @@ class Parser:
     grammar: Grammar
     # state_stack is used to store the now indent and the corresponding state.
     # for example, in the demo, we need to store the state such as for-sentence.
-    indent_stack: List[Union[int, int]] = []
+    loop_indent: List[int] = []
+    define: bool = False
+    force_indent:bool = False
+    now_indent: int = 0
     white_space_cnt: int = 0
     line_start: bool = True
     def __post_init__(self):
@@ -162,10 +165,10 @@ class Parser:
                 if s.terminated():
                     #Detect the loop.
                     if loop_rules.__contains__(s.name):
-                        self.indent_stack[-1][0] = True
+                        self.loop_indent.append(self.now_indent)
                     #To check the new lines.
                     if def_rules.__contains__(s.name):
-                        self.indent_stack[-1][1] = True
+                        self.define = True
                     self.__post_init__()
                     break 
             
@@ -220,22 +223,22 @@ class Parser:
                 # Indentation should be multiple of 4.
                 if self.white_space_cnt % 4 != 0:
                     raise Exception("Indentation Error")
-                # If the indent_stack is empty, indent is invalid.
-                if len(self.indent_stack) == 0 and self.white_space_cnt != 0:
-                    raise Exception("Indentation Error")
                 # Too deep indentation.
-                if (len(self.indent_stack) + 1) <  self.white_space_cnt / 4:
+                if (self.now_indent <  self.white_space_cnt - 4):
                     raise Exception("Indentation Error")
                 # The same indentation.
-                if len(self.indent_stack) == self.white_space_cnt / 4:
+                if self.now_indent == self.white_space_cnt:
                     pass
                 # The indentation is appended.
-                if len(self.indent_stack) < self.white_space_cnt / 4:
-                    self.indent_stack.append(Union[False, False])
+                if self.now_indent == self.white_space_cnt - 4:
+                    self.now_indent = self.white_space_cnt
                 # The indentation is popped.
-                if len(self.indent_stack) > self.white_space_cnt / 4:
-                    while(len(self.indent_stack) > self.white_space_cnt / 4):
-                        self.indent_stack.pop()
+                if self.now_indent > self.white_space_cnt:
+                    self.now_indent = self.white_space_cnt
+                    if(self.now_indent == 0):
+                        self.define = False
+                        while(self.loop_indent != [] and self.loop_indent[-1] > self.now_indent):
+                            self.loop_indent.pop()
                 self.line_start = False
                           
             self._consume(token)
