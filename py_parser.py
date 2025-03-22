@@ -11,9 +11,11 @@ XGRAMMAR_DIGIT_FLAG = "DIGIT"
 XGRAMMAR_HEX_FLAG = "HEX"
 LOOP_FLAG = "LOOP_FLAG"
 DEF_FLAG = "DEF_FLAG"
+FORCE_FLAG = "FORCE_FLAG"
 
 loop_rules = Set()
 def_rules = Set()
+force_rules = Set()
 
 # We use int to represent non-terminal symbols and str to represent terminal symbols.
 def is_terminal(symbol: Union[str, int]) -> str | None:
@@ -64,6 +66,8 @@ class Grammar:
                     if(symbol == DEF_FLAG):
                         def_rules.add(rule_dict[lhs])
                         continue
+                    if(symbol == FORCE_FLAG):
+                        force_rules.add(rule_dict[lhs])
                     if(symbol == ""):
                         continue
                     if symbol in rule_dict:
@@ -164,6 +168,10 @@ class Parser:
             for s in state:
                 if s.terminated():
                     #Detect the loop.
+                    if force_rules.__contains__(s.name):
+                        self.force_indent = True
+                    else:
+                        self.force_indent = False
                     if loop_rules.__contains__(s.name):
                         self.loop_indent.append(self.now_indent)
                     #To check the new lines.
@@ -222,10 +230,13 @@ class Parser:
             if token != " " and token != "\n" and self.line_start:
                 # Indentation should be multiple of 4.
                 if self.white_space_cnt % 4 != 0:
-                    raise Exception("Indentation Error")
+                    raise Exception("Indentation Error: Not Multiple of 4")
                 # Too deep indentation.
                 if (self.now_indent <  self.white_space_cnt - 4):
-                    raise Exception("Indentation Error")
+                    raise Exception("Indentation Error: Too Deep Indentation")
+                # The forced indentation is not satisfied.
+                if self.force_indent and self.now_indent != self.white_space_cnt - 4:
+                    raise Exception("Indentation Error: Forced Indentation")
                 # The same indentation.
                 if self.now_indent == self.white_space_cnt:
                     pass
