@@ -9,7 +9,11 @@ root_rule_number = 0
 XGRAMMAR_EVERYTHING_FLAG = "EVERYTHING"
 XGRAMMAR_DIGIT_FLAG = "DIGIT"
 XGRAMMAR_HEX_FLAG = "HEX"
-XGRAMMAR_FLAG = "LOOP_FLAG"
+LOOP_FLAG = "LOOP_FLAG"
+DEF_FLAG = "DEF_FLAG"
+
+loop_rules = Set()
+def_rules = Set()
 
 # We use int to represent non-terminal symbols and str to represent terminal symbols.
 def is_terminal(symbol: Union[str, int]) -> str | None:
@@ -27,7 +31,9 @@ def is_nonterminal(symbol: Union[str, int]) -> int | None:
 class Grammar:
     rules: Tuple[Tuple[int, str], ...]
     def parse(rule: str) -> "Grammar":
-        dict = {str:int}
+        global loop_rules
+        global def_rules
+        rule_dict = {str:int}
         cnt = 0
         results = []
         # Do the first scanning. Add all the non-terminal symbols to the dictionary.
@@ -36,7 +42,7 @@ class Grammar:
                 continue
             lhs, rhs = line.replace(" ", "").split("::=")
             cnt += 1
-            dict[lhs] = cnt
+            rule_dict[lhs] = cnt
         # Do the second scanning. Replace the non-terminal symbols with the corresponding number.
         cnt = 0
         for line in rule.split("\n"):
@@ -47,14 +53,21 @@ class Grammar:
             lhs = lhs.replace(" ", "")
             if(lhs == ROOT_RULE):
                 global root_rule_number
-                root_rule_number = dict[lhs]
+                root_rule_number = rule_dict[lhs]
             for rule in rhs.split("|"):
                 processed = []
                 for symbol in rule.split(" "):
+                    # If the symbol is a loop flag, add the rule to the loop_rules set.
+                    if(symbol == LOOP_FLAG):
+                        loop_rules.add(rule_dict[lhs])
+                        continue
+                    if(symbol == DEF_FLAG):
+                        def_rules.add(rule_dict[lhs])
+                        continue
                     if(symbol == ""):
                         continue
-                    if symbol in dict:
-                        processed.append(dict[symbol])
+                    if symbol in rule_dict:
+                        processed.append(rule_dict[symbol])
                     else:
                         processed.append(symbol)    
                 if(processed != []):
@@ -97,7 +110,7 @@ class Parser:
     grammar: Grammar
     # state_stack is used to store the now indent and the corresponding state.
     # for example, in the demo, we need to store the state such as for-sentence.
-    indent_stack: List[bool] = []
+    indent_stack: List[Union[int, int]] = []
     white_space_cnt: int = 0
     line_start: bool = True
     def __post_init__(self):
@@ -144,6 +157,19 @@ class Parser:
                 queue += self._predict(cur_pos, nt)
             else:
                 self._scan(state, cur_pos, terminal)
+        if(text == "\n"):
+            for s in state:
+                if s.terminated():
+                    #Detect the loop.
+                    if loop_rules.__contains__(s.name):
+                        self.indent_stack[-1][0] = True
+                    #To check the new lines.
+                    if def_rules.__contains__(s.name):
+                        self.indent_stack[-1][1] = True
+                    self.__post_init__()
+                    break 
+            
+                raise Exception("Syntax Error")
 
     def _finalize(self, pos: int):
         queue = list(self.state_set.pop())
@@ -181,9 +207,15 @@ class Parser:
             
             if token == " " and self.line_start:
                 self.white_space_cnt += 1 
+                continue
+            
             if token == "\n":
+                # An empty line.
+                if(self.line_start):
+                    continue
                 self.line_start = True
                 self.white_space_cnt = 0
+                
             if token != " " and token != "\n" and self.line_start:
                 # Indentation should be multiple of 4.
                 if self.white_space_cnt % 4 != 0:
@@ -194,12 +226,15 @@ class Parser:
                 # Too deep indentation.
                 if (len(self.indent_stack) + 1) <  self.white_space_cnt / 4:
                     raise Exception("Indentation Error")
+                # The same indentation.
                 if len(self.indent_stack) == self.white_space_cnt / 4:
                     pass
+                # The indentation is appended.
                 if len(self.indent_stack) < self.white_space_cnt / 4:
-                    self.indent_stack.append(False)
+                    self.indent_stack.append(Union[False, False])
+                # The indentation is popped.
                 if len(self.indent_stack) > self.white_space_cnt / 4:
-                    while(len(self.indent_stack) != self.white_space_cnt / 4):
+                    while(len(self.indent_stack) > self.white_space_cnt / 4):
                         self.indent_stack.pop()
                 self.line_start = False
                           
