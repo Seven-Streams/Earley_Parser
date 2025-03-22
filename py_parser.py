@@ -61,7 +61,8 @@ class Grammar:
                 continue
             lhs, rhs = line.replace(" ", "").split("::=")
             cnt += 1
-            rule_dict[lhs] = cnt
+            if not lhs in rule_dict:
+                rule_dict[lhs] = cnt
         # Do the second scanning. Replace the non-terminal symbols with the corresponding number.
         cnt = 0
         for line in rule.split("\n"):
@@ -336,7 +337,7 @@ grammar = Grammar.parse(
     $ ::= python
     python ::= assign_statement | if_statement | else_statement | while_statement | for_statement | break_statement | continue_statement | return_statement | function_definition | expr_statement
     function_definition ::= d e f whitespaces variable ( args ) : FORCE_FLAG DEF_FLAG COMPLETE_FLAG | d e f whitespaces variable ( ) : FORCE_FLAG DEF_FLAG COMPLETE_FLAG 
-    args ::= variable | args , variable
+    args ::= args , variable | variable
     Float ::= Int . Int 
     Int ::= DIGIT | Int DIGIT 
     String ::= " " | " chars " 
@@ -353,8 +354,10 @@ grammar = Grammar.parse(
     expr_unary_op ::= + | - | ~ | n o t
     in_args ::= in_args , expr | expr
     func_call ::= variable ( in_args ) | variable ( )
-    expr ::= Int | Float | String | Bool | variable | func_call | expr expr_binary_op expr | expr_unary_op expr | ( expr ) | variable assign_op expr
-    variable ::= variable_char | variable variable_char | variable DIGIT
+    expr ::= expr_raw | whitespaces expr_raw | expr whitespaces | whitespaces expr whitespaces
+    expr_raw ::= Int | Float | String | Bool | variable | func_call | expr expr_binary_op expr | expr_unary_op expr | ( expr ) | variable assign_op expr
+    variable ::= variable_raw | whitespaces variable_raw | variable whitespaces | whitespaces variable whitespaces
+    variable_raw ::= variable_char | variable variable_char | variable DIGIT
     variable_char ::= a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q | r | s | t | u | v | w | x | y | z | A | B | C | D | E | F | G | H | I | J | K | L | M | N | O | P | Q | R | S | T | U | V | W | X | Y | Z | _ 
     chars ::= EVERYTHING | chars EVERYTHING | chars escaped | escaped
     escaped ::= \\ \\ | \\ "  | \\ n  | \\ b  | \\ f  | \\ r | \\ t 
@@ -363,6 +366,7 @@ grammar = Grammar.parse(
     whitespaces ::= WHITE_SPACE_FLAG | whitespaces WHITE_SPACE_FLAG
     """
 )
+
 # print(Parser(grammar))
 
 #verdict: pass
@@ -431,19 +435,19 @@ grammar = Grammar.parse(
 Parser(grammar, [], []).read(
     """
 def count_even_numbers(limit):
-    count=0
-    number=1
-    while number<=limit:
-        if number%2==0:
-            count=count+1
-        number=number+1
+    count = 0
+    number = 1
+    while number <= limit:
+        if number % 2 == 0:
+            count = count + 1
+        number = number + 1
     return count
 
-limit=10
-result=count_even_numbers(limit)
+limit = 10
+result = count_even_numbers(limit)
 
-if result>0:
-    print("There are",result,"even numbers.")
+if result > 0:
+    print("There are",result, "even numbers.")
 else:
     print("No even numbers found.")
     """
