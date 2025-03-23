@@ -343,11 +343,8 @@ class Parser:
 grammar = Grammar.parse(
     """
     $ ::= python
-    python ::= python whitespaces | assign_statement | if_statement | else_statement 
-    python ::= while_statement | for_statement | break_statement | continue_statement 
-    python ::= return_statement | function_definition | expr_statement
-    function_definition ::= d e f whitespaces variable ( args ) : FORCE_FLAG DEF_FLAG COMPLETE_FLAG 
-    function_definition ::= d e f whitespaces variable ( ) : FORCE_FLAG DEF_FLAG COMPLETE_FLAG 
+    python ::= python whitespaces | assign_statement | if_statement | else_statement | while_statement | for_statement | break_statement | continue_statement | return_statement | function_definition | expr_statement
+    function_definition ::= d e f whitespaces variable ( args ) : FORCE_FLAG DEF_FLAG COMPLETE_FLAG | d e f whitespaces variable ( ) : FORCE_FLAG DEF_FLAG COMPLETE_FLAG 
     args ::= args , variable | variable
     Float ::= Int . Int 
     Int ::= DIGIT | Int DIGIT 
@@ -366,8 +363,7 @@ grammar = Grammar.parse(
     in_args ::= in_args , expr | expr
     func_call ::= variable ( in_args ) | variable ( )
     expr ::= expr_raw | whitespaces expr_raw | expr whitespaces | whitespaces expr whitespaces
-    expr_raw ::= Int | Float | String | Bool | variable | func_call 
-    expr_raw ::= expr expr_binary_op expr | expr_unary_op expr | ( expr ) | variable assign_op expr
+    expr_raw ::= Int | Float | String | Bool | variable | func_call | expr expr_binary_op expr | expr_unary_op expr | ( expr ) | variable assign_op expr
     variable ::= variable_raw | whitespaces variable_raw | variable whitespaces | whitespaces variable whitespaces
     variable_raw ::= variable_char | variable variable_char | variable DIGIT
     variable_char ::= VARIABLE_FLAG
