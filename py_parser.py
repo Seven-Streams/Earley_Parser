@@ -54,7 +54,6 @@ class Grammar:
         global if_rules
         global need_if_rules
         global complete_line_rules
-        global root_rule_number
         rule_dict = {str:int}
         cnt = 0
         results = []
@@ -75,6 +74,7 @@ class Grammar:
             lhs, rhs = line.split("::=")
             lhs = lhs.replace(" ", "")
             if(lhs == ROOT_RULE):
+                global root_rule_number
                 root_rule_number = rule_dict[lhs]
             for rule in rhs.split("|"):
                 processed = []
