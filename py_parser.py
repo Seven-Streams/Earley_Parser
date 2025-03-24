@@ -395,12 +395,12 @@ grammar = Grammar.parse(
     continue_statement ::= c o n t i n u e NEED_LOOP_FLAG COMPLETE_FLAG
     return_statement ::= r e t u r n whitespaces expr NEED_DEF_FLAG COMPLETE_FLAG | r e t u r n NEED_DEF_FLAG COMPLETE_FLAG
     assign_op ::= = | + = | - = | * = | / = | % = | & =  | ^ = | < < = | > > = | * * = | OR_FLAG = | / / =
-    expr_binary_op ::= + | - | * | / | % | & | ^ | < < | > > | * * | = = | ! = | < | > | < = | > = | a n d | o r | OR_FLAG | / /
+    expr_binary_op ::= + | - | * | / | % | & | ^ | < < | > > | * * | = = | ! = | < | > | < = | > = | a n d | o r | OR_FLAG | / / | i s | i n
     expr_unary_op ::= + | - | ~ | n o t
     in_args ::= in_args , expr | expr
     func_call ::= variable ( in_args ) | variable ( )
     expr ::= expr_raw | whitespaces expr_raw | expr whitespaces | whitespaces expr whitespaces
-    expr_raw ::= Int | Float | String | Bool | variable | func_call | expr expr_binary_op expr | expr_unary_op expr | ( expr ) | expr assign_op expr | Array | expr i n expr | expr . expr | expr , expr | Dict
+    expr_raw ::= Int | Float | String | Bool | variable | func_call | expr expr_binary_op expr | expr_unary_op expr | ( expr ) | expr assign_op expr | Array | expr . expr | expr , expr | Dict
     variable ::= variable_raw | whitespaces variable_raw | variable whitespaces | whitespaces variable whitespaces
     variable_raw ::= variable_char | variable_raw variable_char | variable_raw DIGIT
     variable_char ::= VARIABLE_FLAG
@@ -414,60 +414,42 @@ grammar = Grammar.parse(
 now_time = time.time()
 Parser(grammar, [], []).read(
     """
-def build_segment_tree(tree, data, node, start, end):
-    if start == end:
-        tree[node] = data[start]
+def create_priority_queue():
+    return {"data": {}, "size": 0}
+
+def enqueue(queue, priority, value):
+    if priority in queue["data"]:
+        queue["data"][priority].append(value)
     else:
-        mid = (start + end) // 2
-        left_child = 2 * node + 1
-        right_child = 2 * node + 2
-        build_segment_tree(tree, data, left_child, start, mid)
-        build_segment_tree(tree, data, right_child, mid + 1, end)
-        tree[node] = tree[left_child] + tree[right_child]
+        queue["data"][priority] = [value]
+    queue["size"] = queue["size"] + 1
 
-def update_segment_tree(tree, node, start, end, idx, value):
-    if start == end:
-        tree[node] = value
-    else:
-        mid = (start + end) // 2
-        left_child = 2 * node + 1
-        right_child = 2 * node + 2
-        if idx <= mid:
-            update_segment_tree(tree, left_child, start, mid, idx, value)
-        else:
-            update_segment_tree(tree, right_child, mid + 1, end, idx, value)
-        tree[node] = tree[left_child] + tree[right_child]
+def dequeue(queue):
+    if queue["size"] == 0:
+        return None
+    highest_priority = None
+    for priority in queue["data"]:
+        if highest_priority is None or priority < highest_priority:
+            highest_priority = priority
+    value = queue["data"][highest_priority].pop(0)
+    if len(queue["data"][highest_priority]) == 0:
+        test = test + 1
+    queue["size"] = queue["size"] - 1
+    return value
 
-def query_segment_tree(tree, node, start, end, l, r):
-    if r < start or l > end:
-        return 0
-    if l <= start and end <= r:
-        return tree[node]
-    mid = (start + end) // 2
-    left_child = 2 * node + 1
-    right_child = 2 * node + 2
-    left_sum = query_segment_tree(tree, left_child, start, mid, l, r)
-    right_sum = query_segment_tree(tree, right_child, mid + 1, end, l, r)
-    return left_sum + right_sum
+def is_empty(queue):
+    return queue["size"] == 0
 
-def initialize_tree(size):
-    tree = {}
-    i = 0
-    while i < size:
-        tree[i] = 0
-        i = i + 1
-    return tree
-
-data = {0: 1, 1: 3, 2: 5, 3: 7, 4: 9, 5: 11}
-n = len(data)
-tree = initialize_tree(4 * n)
-build_segment_tree(tree, data, 0, 0, n - 1)
-update_segment_tree(tree, 0, 0, n - 1, 2, 6)
-result = query_segment_tree(tree, 0, 0, n - 1, 1, 3)
-if result > 0:
-    print("The sum of the range is", result)
-else:
-    print("The range sum is zero or negative")
+queue = create_priority_queue()
+enqueue(queue, 2, "task2")
+enqueue(queue, 1, "task1")
+enqueue(queue, 3, "task3")
+enqueue(queue, 1, "task1-2")
+while not is_empty(queue):
+    task = dequeue(queue)
+    if task is not None:
+        print("Processing", task)
     """
 )
 print("The time is", time.time() - now_time, "s.")
+print()
