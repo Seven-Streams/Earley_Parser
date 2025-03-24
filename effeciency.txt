@@ -1,0 +1,23 @@
+The number of states is 10909
+The number of tokens is 1232
+The number of lines is 67
+The number of tokens without indent is 1004
+The ratio of states to tokens without indents is 10.865537848605578
+
+The number of states is 3810
+The number of tokens is 420
+The number of lines is 24
+The number of tokens without indent is 344
+The ratio of states to tokens without indents is 11.075581395348838
+
+The number of states is 4187
+The number of tokens is 345
+The number of lines is 14
+The number of tokens without indent is 289
+The ratio of states to tokens without indents is 14.487889273356402
+
+The number of states is 14805
+The number of tokens is 1444
+The number of lines is 63
+The number of tokens without indent is 1140
+The ratio of states to tokens without indents is 12.986842105263158

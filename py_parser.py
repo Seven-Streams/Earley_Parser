@@ -159,6 +159,10 @@ class Parser:
     force_indent:bool = False
     now_indent: int = 0
     white_space_cnt: int = 0
+    state_num = 0
+    tokens_num = 0
+    tokens_num_without_indent = 0
+    lines = 0
     line_start: bool = True
     def __post_init__(self):
         self.state_set: List[Set[State]] = [set()]
@@ -210,11 +214,14 @@ class Parser:
             else:
                 self._scan(state, cur_pos, terminal)
         # If the text is a new line.
+        self.state_num += len(self.state_set)
+        self.tokens_num += 1
+        self.tokens_num_without_indent += 1
         if(text == "\n"):
+            self.lines += 1
             for state in self.state_set:
                 for s in state:
                     if s.terminated() and s.name in complete_line_rules:
-                        print(s)
                         #Detect the loop.
                         if force_rules.__contains__(s.name):
                             self.force_indent = True
@@ -261,12 +268,12 @@ class Parser:
         for i, state in enumerate(self.state_set):
             if i < pos:
                 continue
-            # accept = any(s.name == root_rule_number and s.terminated() for s in state)
+            # accept = any(s.name == root_rule_number and s.terminzzated() for s in state)
             # print(f"State {i}: {text[:i]}•{text[i:]} {accept=}")
-            print("\n".join(f"  {s}" for s in state))
-            for s in state:
-                if s.name == root_rule_number and s.terminated():
-                    print(s)
+            # print("\n".join(f"  {s}" for s in state))
+            # for s in state:
+            #     if s.name == root_rule_number and s.terminated():
+            #         print(s)
                    
 
     def _print(self, pos: int) -> None:
@@ -280,6 +287,7 @@ class Parser:
         for token in text:
             
             if token == " " and self.line_start:
+                self.tokens_num += 1
                 self.white_space_cnt += 1 
                 continue
             
@@ -321,6 +329,11 @@ class Parser:
                           
             self._consume(token)
         self._print(length)
+        print("The number of states is", self.state_num)
+        print("The number of tokens is", self.tokens_num)
+        print("The number of lines is", self.lines)
+        print("The number of tokens without indent is", self.tokens_num_without_indent)
+        print("The ratio of states to tokens without indents is", self.state_num / self.tokens_num_without_indent)
         return self
 # In my realization, $ shouldn't have multiple rules. i.e.
 # $ ::= Array | Object is undefined.
@@ -357,8 +370,8 @@ grammar = Grammar.parse(
     break_statement ::= b r e a k NEED_LOOP_FLAG COMPLETE_FLAG
     continue_statement ::= c o n t i n u e NEED_LOOP_FLAG COMPLETE_FLAG
     return_statement ::= r e t u r n whitespaces expr NEED_DEF_FLAG COMPLETE_FLAG | r e t u r n NEED_DEF_FLAG COMPLETE_FLAG
-    assign_op ::= = | + = | - = | * = | / = | % = | & =  | ^ = | < < = | > > = | * * = | OR_FLAG = 
-    expr_binary_op ::= + | - | * | / | % | & | ^ | < < | > > | * * | = = | ! = | < | > | < = | > = | a n d | o r | OR_FLAG
+    assign_op ::= = | + = | - = | * = | / = | % = | & =  | ^ = | < < = | > > = | * * = | OR_FLAG = | / / =
+    expr_binary_op ::= + | - | * | / | % | & | ^ | < < | > > | * * | = = | ! = | < | > | < = | > = | a n d | o r | OR_FLAG | / /
     expr_unary_op ::= + | - | ~ | n o t
     in_args ::= in_args , expr | expr
     func_call ::= variable ( in_args ) | variable ( )
@@ -442,23 +455,9 @@ grammar = Grammar.parse(
 # """
 # )
 
+
+
 Parser(grammar, [], []).read(
     """
-def count_even_numbers(limit):
-    count = 0
-    number |= 1
-    while number <= limit:
-        if number % 2 == 0:
-            count = count + 1
-        number = number + 1
-    return count
-
-limit = 10
-result = count_even_numbers(limit)
-
-if result > 0:
-    print("There are",result, "even numbers.")
-else:
-    print("No even numbers found.")
     """
 )
