@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import List, Set, Tuple, Union
+import time
 # Modified based on DarkSharpness's code
 
 ROOT_RULE= "$"
@@ -381,7 +382,7 @@ grammar = Grammar.parse(
     args ::= args , variable | variable
     Float ::= Int . Int 
     Int ::= DIGIT | Int DIGIT 
-    Array ::= expr [ expr ] | expr [ ] | { }
+    Array ::= expr [ expr ] | expr [ ] | { } | [ ] | [ in_args ]
     String ::= " " | " chars " | ' ' | ' chars '
     expr_statement ::= expr COMPLETE_FLAG
     if_statement ::= i f whitespaces expr : FORCE_FLAG IF_FLAG COMPLETE_FLAG
@@ -397,7 +398,7 @@ grammar = Grammar.parse(
     in_args ::= in_args , expr | expr
     func_call ::= variable ( in_args ) | variable ( )
     expr ::= expr_raw | whitespaces expr_raw | expr whitespaces | whitespaces expr whitespaces
-    expr_raw ::= Int | Float | String | Bool | variable | func_call | expr expr_binary_op expr | expr_unary_op expr | ( expr ) | expr assign_op expr | Array | expr i n expr
+    expr_raw ::= Int | Float | String | Bool | variable | func_call | expr expr_binary_op expr | expr_unary_op expr | ( expr ) | expr assign_op expr | Array | expr i n expr | expr . expr
     variable ::= variable_raw | whitespaces variable_raw | variable whitespaces | whitespaces variable whitespaces
     variable_raw ::= variable_char | variable_raw variable_char | variable_raw DIGIT
     variable_char ::= VARIABLE_FLAG
@@ -408,77 +409,9 @@ grammar = Grammar.parse(
     """
 )
 
-# for key, value in global_rule_dict.items():
-#     print(key, value)
-# print(Parser(grammar))
-
-#verdict: pass
-# Parser(grammar, [], []).read(
-# """
-# a=1
-# b=2
-# if a==1:
-#     print(a)
-# else:
-#     print(b)
-# """    
-# )
-
-# verdict: fail
-# Parser(grammar, [], []).read(
-# """
-# a=1
-# b=2
-# if a==1:
-# print(a)
-# else:
-# print(b)
-# """    
-# )
-
-#verdict: pass
-# Parser(grammar, [], []).read(
-# """
-# for i in range(10):
-#     for j in range(100):
-#         for k in range(1000):
-#             for l in range(10000):
-#                 print(i,j,k,l)
-#         print(i)
-#     break
-# """    
-# )
-
-#verdict: pass
-# Parser(grammar, [], []).read(
-# """
-# def f(a,b,c):
-#     return 1
-# def k():
-#     return
-# f(a,b,c)
-# k()
-# """)
-
-
-# verdict: fail
-# Parser(grammar, [], []).read(
-# """
-# return 1
-# """
-# )
-
-# verdict: pass
-# Parser(grammar, [], []).read(
-# """
-# b="\\\\\\n"
-# """
-# )
-
-
-
+now_time = time.time()
 Parser(grammar, [], []).read(
     """
-
     """
 )
+print("The time is", time.time() - now_time, "s.")
