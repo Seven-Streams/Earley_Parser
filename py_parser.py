@@ -8,6 +8,7 @@ root_rule_number = 0
 # The following flags are used to represent a universal symbol.
 XGRAMMAR_EVERYTHING_FLAG = "EVERYTHING"
 XGRAMMAR_HEX_FLAG = "HEX"
+XGRAMMAR_DIGIT_FLAG = "DIGIT"
 LOOP_FLAG = "LOOP_FLAG"
 DEF_FLAG = "DEF_FLAG"
 FORCE_FLAG = "FORCE_FLAG"
@@ -163,6 +164,10 @@ class Parser:
     tokens_num = 0
     tokens_num_without_indent = 0
     lines = 0
+    complete_times = 0
+    scan_times = 0
+    predict_times = 0
+    init_times = 0
     line_start: bool = True
     def __post_init__(self):
         self.state_set: List[Set[State]] = [set()]
@@ -172,23 +177,27 @@ class Parser:
     def _complete(self, state: State) -> List[State]:
         results: List[State] = []
         for r in self.state_set[state.start]:
+            self.complete_times += 1
             if state.name == r.symbol():
                 results.append(next(r))
         return results
 
     def _predict(self, start: int, symbol: str) -> List[State]:
+        self.predict_times +=  len(self.grammar[symbol])
         return [
             State(*r, start=start)
             for r in self.grammar[symbol]
         ]
 
     def _scan(self, state: State, start: int, token: str):
+        self.scan_times += 1
         if state.symbol() == token \
         or (state.symbol() == XGRAMMAR_EVERYTHING_FLAG and state.symbol() != "\\") \
         or (state.symbol() == WHITE_SPACE_FLAG and token == " ") \
         or (state.symbol() == VARIABLE_FLAG \
             and token in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_") \
-        or (state.symbol() == OR_FLAG and token == "|"):
+        or (state.symbol() == OR_FLAG and token == "|")\
+        or (state.symbol() == XGRAMMAR_DIGIT_FLAG and token in "0123456789"):
             self.state_set[start + 1].add(next(state))
 
     def _consume(self, text: str):      
@@ -333,7 +342,18 @@ class Parser:
         print("The number of tokens is", self.tokens_num)
         print("The number of lines is", self.lines)
         print("The number of tokens without indent is", self.tokens_num_without_indent)
+        print("The number of complete lines is", self.complete_times)
+        print("The number of scan times is", self.scan_times)
+        print("The number of predict times is", self.predict_times)
+        print("The average line tokens without indent is", self.tokens_num_without_indent / self.lines)
         print("The ratio of states to tokens without indents is", self.state_num / self.tokens_num_without_indent)
+        print("The ratio of complete times to tokens without indents is", self.complete_times / self.tokens_num_without_indent)
+        print("The ratio of scan times to tokens without indents is", self.scan_times / self.tokens_num_without_indent)
+        print("The ratio of predict times to tokens without indents is", self.predict_times / self.tokens_num_without_indent)
+        print("The line average of the states is", self.state_num / self.lines)
+        print("The line average of complete times is", self.complete_times / self.lines)
+        print("The line average of scan times is", self.scan_times / self.lines)
+        print("The line average of predict times is", self.predict_times / self.lines)
         return self
 # In my realization, $ shouldn't have multiple rules. i.e.
 # $ ::= Array | Object is undefined.
@@ -383,7 +403,6 @@ grammar = Grammar.parse(
     chars ::= EVERYTHING | chars EVERYTHING | chars escaped | escaped
     escaped ::= \\ \\ | \\ "  | \\ n  | \\ b  | \\ f  | \\ r | \\ t 
     Bool ::= T r u e | F a l s e
-    DIGIT ::= 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
     whitespaces ::= WHITE_SPACE_FLAG | whitespaces WHITE_SPACE_FLAG
     """
 )
@@ -459,5 +478,76 @@ grammar = Grammar.parse(
 
 Parser(grammar, [], []).read(
     """
+def power(base, exp):
+    result = 1
+    i = 0
+    while i < exp:
+        result = result * base
+        i = i + 1
+    return result
+
+def is_palindrome(number):
+    original = number
+    reverse = 0
+    while number > 0:
+        digit = number % 10
+        reverse = reverse * 10 + digit
+        number = number // 10
+    if original == reverse:
+        return True
+    else:
+        return False
+
+def count_palindromes(limit):
+    count = 0
+    num = 1
+    while num <= limit:
+        if is_palindrome(num):
+            count = count + 1
+        num = num + 1
+    return count
+
+def sum_of_powers(limit, exp):
+    total = 0
+    num = 1
+    while num <= limit:
+        total = total + power(num, exp)
+        num = num + 1
+    return total
+
+def nested_loops(limit):
+    total = 0
+    i = 1
+    while i <= limit:
+        j = 1
+        while j <= i:
+            k = 1
+            while k <= j:
+                total = total + i * j * k
+                k = k + 1
+            j = j + 1
+        i = i + 1
+    return total
+
+limit = 100
+exp = 3
+palindrome_count = count_palindromes(limit)
+power_sum = sum_of_powers(limit, exp)
+nested_result = nested_loops(10)
+
+if palindrome_count > 50:
+    print("Many palindromes")
+else:
+    print("Few palindromes")
+
+if power_sum > 10000:
+    print("Sum of powers is large")
+else:
+    print("Sum of powers is small")
+
+if nested_result > 500:
+    print("Nested result is large")
+else:
+    print("Nested result is small")
     """
 )
