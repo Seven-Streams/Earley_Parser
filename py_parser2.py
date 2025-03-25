@@ -295,6 +295,7 @@ class Parser:
     def read(self, text: str):
         length = len(self.state_set)
         for token in text:
+            print("The token is", token)
             
             if token == " " and self.line_start:
                 self.tokens_num += 1
@@ -339,22 +340,22 @@ class Parser:
                           
             self._consume(token)
         self._print(length)
-        print("The number of states is", self.state_num)
-        print("The number of tokens is", self.tokens_num)
-        print("The number of lines is", self.lines)
-        print("The number of tokens without indent is", self.tokens_num_without_indent)
-        print("The number of complete lines is", self.complete_times)
-        print("The number of scan times is", self.scan_times)
-        print("The number of predict times is", self.predict_times)
-        print("The average line tokens without indent is", self.tokens_num_without_indent / self.lines)
+        # print("The number of states is", self.state_num)
+        # print("The number of tokens is", self.tokens_num)
+        # print("The number of lines is", self.lines)
+        # print("The number of tokens without indent is", self.tokens_num_without_indent)
+        # print("The number of complete lines is", self.complete_times)
+        # print("The number of scan times is", self.scan_times)
+        # print("The number of predict times is", self.predict_times)
+        # print("The average line tokens without indent is", self.tokens_num_without_indent / self.lines)
         print("The ratio of states to tokens without indents is", self.state_num / self.tokens_num_without_indent)
-        print("The ratio of complete times to tokens without indents is", self.complete_times / self.tokens_num_without_indent)
-        print("The ratio of scan times to tokens without indents is", self.scan_times / self.tokens_num_without_indent)
-        print("The ratio of predict times to tokens without indents is", self.predict_times / self.tokens_num_without_indent)
-        print("The line average of the states is", self.state_num / self.lines)
-        print("The line average of complete times is", self.complete_times / self.lines)
-        print("The line average of scan times is", self.scan_times / self.lines)
-        print("The line average of predict times is", self.predict_times / self.lines)
+        # print("The ratio of complete times to tokens without indents is", self.complete_times / self.tokens_num_without_indent)
+        # print("The ratio of scan times to tokens without indents is", self.scan_times / self.tokens_num_without_indent)
+        # print("The ratio of predict times to tokens without indents is", self.predict_times / self.tokens_num_without_indent)
+        # print("The line average of the states is", self.state_num / self.lines)
+        # print("The line average of complete times is", self.complete_times / self.lines)
+        # print("The line average of scan times is", self.scan_times / self.lines)
+        # print("The line average of predict times is", self.predict_times / self.lines)
         return self
 # In my realization, $ shouldn't have multiple rules. i.e.
 # $ ::= Array | Object is undefined.
@@ -377,60 +378,26 @@ class Parser:
 grammar = Grammar.parse(
     """
     $ ::= python
-    python ::= python whitespaces | if_statement | else_statement | while_statement | for_statement | break_statement | continue_statement | return_statement | function_definition | expr_statement
-    function_definition ::= d e f whitespaces variable ( args ) : FORCE_FLAG DEF_FLAG COMPLETE_FLAG | d e f whitespaces variable ( ) : FORCE_FLAG DEF_FLAG COMPLETE_FLAG 
-    args ::= args , variable | variable
-    Float ::= Int . Int 
-    Int ::= DIGIT | Int DIGIT 
-    Array ::= expr [ expr ] | expr [ ] | { } | [ ] | [ in_args ]
+    python ::= if_statement | else_statement | while_statement | for_statement | break_statement | continue_statement | return_statement | function_definition | expr_statement
+    function_definition ::= d v ( args ) : FORCE_FLAG DEF_FLAG COMPLETE_FLAG | d e f v ( ) : FORCE_FLAG DEF_FLAG COMPLETE_FLAG 
+    args ::= args , v | v
+    Array ::= expr [ expr ] | [ ] | [ in_args ]
     Dict ::= { } | { key_values }
     key_values ::= key_values , expr : expr | expr : expr
-    String ::= " " | " chars " | ' ' | ' chars '
     expr_statement ::= expr COMPLETE_FLAG
-    if_statement ::= i f whitespaces expr : FORCE_FLAG IF_FLAG COMPLETE_FLAG
+    if_statement ::= i f expr : FORCE_FLAG IF_FLAG COMPLETE_FLAG
     else_statement ::= e l s e : NEED_IF_FLAG COMPLETE_FLAG FORCE_FLAG
-    while_statement ::= w h i l e whitespaces expr : LOOP_FLAG COMPLETE_FLAG FORCE_FLAG
-    for_statement ::= f o r whitespaces variable whitespaces i n whitespaces expr : LOOP_FLAG COMPLETE_FLAG FORCE_FLAG
+    while_statement ::= w expr : LOOP_FLAG COMPLETE_FLAG FORCE_FLAG
+    for_statement ::= f o r v i n expr : LOOP_FLAG COMPLETE_FLAG FORCE_FLAG
     break_statement ::= b r e a k NEED_LOOP_FLAG COMPLETE_FLAG
     continue_statement ::= c o n t i n u e NEED_LOOP_FLAG COMPLETE_FLAG
-    return_statement ::= r e t u r n whitespaces expr NEED_DEF_FLAG COMPLETE_FLAG | r e t u r n NEED_DEF_FLAG COMPLETE_FLAG
-    assign_op ::= = | + = | - = | * = | / = | % = | & =  | ^ = | < < = | > > = | * * = | OR_FLAG = | / / =
-    expr_binary_op ::= + | - | * | / | % | & | ^ | < < | > > | * * | = = | ! = | < | > | < = | > = | a n d | o r | OR_FLAG | / / | i s | i n
-    expr_unary_op ::= + | - | ~ | n o t
+    return_statement ::= r e t u r n expr NEED_DEF_FLAG COMPLETE_FLAG | r e t u r n NEED_DEF_FLAG COMPLETE_FLAG
     in_args ::= in_args , expr | expr
-    func_call ::= variable ( in_args ) | variable ( )
-    expr ::= expr_raw | whitespaces expr_raw | expr whitespaces | whitespaces expr whitespaces
-    expr_raw ::= Int | Float | String | Bool | variable | func_call | expr expr_binary_op expr | expr_unary_op expr | ( expr ) | expr assign_op expr | Array | expr . expr | expr , expr | Dict
-    variable ::= variable_raw | whitespaces variable_raw | variable whitespaces | whitespaces variable whitespaces
-    variable_raw ::= variable_char | variable_raw variable_char | variable_raw DIGIT
-    variable_char ::= VARIABLE_FLAG
-    chars ::= EVERYTHING | chars EVERYTHING | chars escaped | escaped
-    escaped ::= \\ \\ | \\ "  | \\ n  | \\ b  | \\ f  | \\ r | \\ t 
-    Bool ::= T r u e | F a l s e
-    whitespaces ::= WHITE_SPACE_FLAG | whitespaces WHITE_SPACE_FLAG
+    func_call ::= v ( in_args ) | v ( )
+    expr ::= l | v | func_call | expr b expr | u expr | ( expr ) | expr a expr | Array | expr . expr | expr , expr | Dict
     """
 )
-
 now_time = time.time()
-Parser(grammar, [], []).read(
-    """
-def count_even_numbers(limit):
-    count = 0
-    number += 1
-    while number <= limit:
-        if number % 2 == 0:
-            count = count + 1
-        number = number + 1
-    return count
-
-limit = 10
-result = count_even_numbers(limit)
-
-if result > 0:
-    print("There are",result, "even numbers.")
-else:
-    print("No even numbers found.")    
-    """
-)
+Parser(grammar, [], []).read("")
 print("The time is", time.time() - now_time, "s.")
 print()

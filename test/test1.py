@@ -14,3 +14,21 @@ if result > 0:
     print("There are",result, "even numbers.")
 else:
     print("No even numbers found.")
+    
+    
+# defv(v):
+#     val
+#     val
+#     whilevbv:
+#         ifvblal:
+#             vavbl
+#         vavbl
+#     returnv
+
+# val
+# vav(v)
+
+# ifvbl:
+#     v(l)
+# else:
+#     v(l)
