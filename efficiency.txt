@@ -1,182 +1,37 @@
-The number of states is 14727
-The number of tokens is 345
-The number of lines is 14
-The number of tokens without indent is 289
-The number of complete lines is 84168
-The number of scan times is 9920
-The number of predict times is 18603
-The average line tokens without indent is 20.642857142857142
-The ratio of states to tokens without indents is 50.95847750865052
-The ratio of complete times to tokens without indents is 291.2387543252595
-The ratio of scan times to tokens without indents is 34.325259515570934
-The ratio of predict times to tokens without indents is 64.37024221453287
-The line average of the states is 1051.9285714285713
-The line average of complete times is 6012.0
-The line average of scan times is 708.5714285714286
-The line average of predict times is 1328.7857142857142
-The time is 0.053093671798706055 s.
+The number of states is 83652
+The number of tokens is 1771
+The number of lines is 50
+The number of tokens without indent is 1527
+The number of complete lines is 585931
+The number of scan times is 59331
+The number of predict times is 141491
+The average line tokens without indent is 30.54
+The ratio of states to tokens without indents is 54.781925343811395
+The ratio of complete times to tokens without indents is 383.7138179436804
+The ratio of scan times to tokens without indents is 38.854616895874265
+The ratio of predict times to tokens without indents is 92.65946299934512
+The line average of the states is 1673.04
+The line average of complete times is 11718.62
+The line average of scan times is 1186.62
+The line average of predict times is 2829.82
+The time is 0.3472263813018799 s.
 
-
-
-The number of states is 19323
-The number of tokens is 420
-The number of lines is 24
-The number of tokens without indent is 344
-The number of complete lines is 119989
-The number of scan times is 12700
-The number of predict times is 25632
-The average line tokens without indent is 14.333333333333334
-The ratio of states to tokens without indents is 56.17151162790697
-The ratio of complete times to tokens without indents is 348.80523255813955
-The ratio of scan times to tokens without indents is 36.91860465116279
-The ratio of predict times to tokens without indents is 74.51162790697674
-The line average of the states is 805.125
-The line average of complete times is 4999.541666666667
-The line average of scan times is 529.1666666666666
-The line average of predict times is 1068.0
-The time is 0.07916927337646484 s.
-
-The number of states is 51372
-The number of tokens is 1232
-The number of lines is 67
-The number of tokens without indent is 1004
-The number of complete lines is 281939
-The number of scan times is 33518
-The number of predict times is 68243
-The average line tokens without indent is 14.985074626865671
-The ratio of states to tokens without indents is 51.167330677290835
-The ratio of complete times to tokens without indents is 280.81573705179284
-The ratio of scan times to tokens without indents is 33.38446215139442
-The ratio of predict times to tokens without indents is 67.9711155378486
-The line average of the states is 766.7462686567164
-The line average of complete times is 4208.044776119403
-The line average of scan times is 500.2686567164179
-The line average of predict times is 1018.5522388059702
-The time is 0.18166565895080566 s.
-
-The number of states is 63938
-The number of tokens is 1444
-The number of lines is 63
-The number of tokens without indent is 1140
-The number of complete lines is 415408
-The number of scan times is 42174
-The number of predict times is 85888
-The average line tokens without indent is 18.095238095238095
-The ratio of states to tokens without indents is 56.0859649122807
-The ratio of complete times to tokens without indents is 364.3929824561404
-The ratio of scan times to tokens without indents is 36.99473684210526
-The ratio of predict times to tokens without indents is 75.34035087719299
-The line average of the states is 1014.8888888888889
-The line average of complete times is 6593.777777777777
-The line average of scan times is 669.4285714285714
-The line average of predict times is 1363.3015873015872
-The time is 0.2520418167114258 s.
-
-The number of states is 98300
-The number of tokens is 1812
-The number of lines is 62
-The number of tokens without indent is 1492
-The number of complete lines is 808029
-The number of scan times is 62649
-The number of predict times is 144574
-The average line tokens without indent is 24.06451612903226
-The ratio of states to tokens without indents is 65.88471849865952
-The ratio of complete times to tokens without indents is 541.5743967828419
-The ratio of scan times to tokens without indents is 41.98994638069705
-The ratio of predict times to tokens without indents is 96.89946380697052
-The line average of the states is 1585.483870967742
-The line average of complete times is 13032.725806451614
-The line average of scan times is 1010.4677419354839
-The line average of predict times is 2331.8387096774195
-The time is 0.4134683609008789 s.
-
-The number of states is 70626
-The number of tokens is 1350
-The number of lines is 54
-The number of tokens without indent is 1154
-The number of complete lines is 461527
-The number of scan times is 44310
-The number of predict times is 106325
-The average line tokens without indent is 21.37037037037037
-The ratio of states to tokens without indents is 61.201039861351816
-The ratio of complete times to tokens without indents is 399.9367417677643
-The ratio of scan times to tokens without indents is 38.396880415944544
-The ratio of predict times to tokens without indents is 92.13604852686308
-The line average of the states is 1307.888888888889
-The line average of complete times is 8546.796296296296
-The line average of scan times is 820.5555555555555
-The line average of predict times is 1968.9814814814815
-The time is 0.2924690246582031 s.
-
-The number of states is 98531
-The number of tokens is 1999
-The number of lines is 66
-The number of tokens without indent is 1639
-The number of complete lines is 625696
-The number of scan times is 65035
-The number of predict times is 134045
-The average line tokens without indent is 24.833333333333332
-The ratio of states to tokens without indents is 60.116534472239174
-The ratio of complete times to tokens without indents is 381.75472849298353
-The ratio of scan times to tokens without indents is 39.67968273337401
-The ratio of predict times to tokens without indents is 81.78462477120195
-The line average of the states is 1492.8939393939395
-The line average of complete times is 9480.242424242424
-The line average of scan times is 985.3787878787879
-The line average of predict times is 2030.9848484848485
-The time is 0.3869466781616211 s.
-
-The number of states is 77584
-The number of tokens is 1647
-The number of lines is 58
-The number of tokens without indent is 1427
-The number of complete lines is 491031
-The number of scan times is 51200
-The number of predict times is 105171
-The average line tokens without indent is 24.603448275862068
-The ratio of states to tokens without indents is 54.36860546601261
-The ratio of complete times to tokens without indents is 344.1002102312544
-The ratio of scan times to tokens without indents is 35.87946741415557
-The ratio of predict times to tokens without indents is 73.70077084793273
-The line average of the states is 1337.655172413793
-The line average of complete times is 8466.051724137931
-The line average of scan times is 882.7586206896551
-The line average of predict times is 1813.2931034482758
-The time is 0.30037760734558105 s.
-
-The number of states is 77125
-The number of tokens is 1529
-The number of lines is 58
-The number of tokens without indent is 1249
-The number of complete lines is 511069
-The number of scan times is 49929
-The number of predict times is 108027
-The average line tokens without indent is 21.53448275862069
-The ratio of states to tokens without indents is 61.74939951961569
-The ratio of complete times to tokens without indents is 409.1825460368295
-The ratio of scan times to tokens without indents is 39.97518014411529
-The ratio of predict times to tokens without indents is 86.49079263410728
-The line average of the states is 1329.7413793103449
-The line average of complete times is 8811.534482758621
-The line average of scan times is 860.8448275862069
-The line average of predict times is 1862.5344827586207
-The time is 0.2927062511444092 s.
-
-The number of states is 99492
-The number of tokens is 1927
-The number of lines is 56
-The number of tokens without indent is 1651
-The number of complete lines is 774086
-The number of scan times is 62487
-The number of predict times is 151828
-The average line tokens without indent is 29.482142857142858
-The ratio of states to tokens without indents is 60.261659600242275
-The ratio of complete times to tokens without indents is 468.8588734100545
-The ratio of scan times to tokens without indents is 37.847970926711085
-The ratio of predict times to tokens without indents is 91.96123561477893
-The line average of the states is 1776.642857142857
-The line average of complete times is 13822.964285714286
-The line average of scan times is 1115.8392857142858
-The line average of predict times is 2711.214285714286
-The time is 0.4054396152496338 s.
+--------------------
+The number of states is 93873
+The number of tokens is 1773
+The number of lines is 50
+The number of tokens without indent is 1529
+The number of complete lines is 600764
+The number of scan times is 59442
+The number of predict times is 141657
+The average line tokens without indent is 30.58
+The ratio of states to tokens without indents is 61.39502943100065
+The ratio of complete times to tokens without indents is 392.91301504251146
+The ratio of scan times to tokens without indents is 38.876389797253104
+The ratio of predict times to tokens without indents is 92.64682799215173
+The line average of the states is 1877.46
+The line average of complete times is 12015.28
+The line average of scan times is 1188.84
+The line average of predict times is 2833.14
+The time is 0.3513338565826416 s.
 

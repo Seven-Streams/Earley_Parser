@@ -208,6 +208,7 @@ class Parser:
 
         queue = list(self.state_set.pop())
         new_set = set()
+        complete_set = set()
         cur_pos = len(self.state_set)
         self.state_set.append(new_set)
         self.state_set.append(set())
@@ -215,12 +216,16 @@ class Parser:
             state = queue.pop(0)
             if state in new_set:
                 continue
-            new_set.add(state)
             if state.terminated():
+                if state in complete_set:
+                    continue
+                complete_set.add(state)
                 queue += self._complete(state)
             elif nt := state.nonterminal_symbol():
+                new_set.add(state)
                 queue += self._predict(cur_pos, nt)
             else:
+                new_set.add(state)
                 self._scan(state, cur_pos, terminal)
         # If the text is a new line.
         self.state_num += len(self.state_set[-2])
