@@ -2,6 +2,8 @@ from dataclasses import dataclass, field
 from typing import List, Set, Tuple, Union, Dict
 
 global_rule_dict: dict[str, int] = {}
+ROOT_RULE= "$"
+root_rule_number = 0
 @dataclass
 class NFA:
     name: str
@@ -42,6 +44,38 @@ class NFA:
                     current = self.node_cnt
                     self.node_cnt += 1
             self.final_node.add(current)
+            
+@dataclass(frozen=True)
+class Grammar:
+    NFAs: Dict[str, NFA] = field(default_factory=dict)
+    def parse(rule: str) -> "Grammar":
+        global global_rule_dict
+        NFAs_tmp: Dict[str, NFA] = {}
+        cnt = 0
+        results = []
+        # Do the first scanning. Add all the non-terminal symbols to the dictionary.
+        for line in rule.split("\n"):
+            if not line.strip():
+                continue
+            lhs, rhs = line.replace(" ", "").split("::=")
+            cnt += 1
+            if (lhs not in global_rule_dict):
+                global_rule_dict[lhs] = cnt
+            if(lhs not in NFAs_tmp):
+                NFAs_tmp[lhs] = NFA(lhs)
+        # Do the second scanning. Replace the non-terminal symbols with the corresponding number.
+        cnt = 0
+        for line in rule.split("\n"):
+            if not line.strip():
+                continue
+            lhs, _ = line.replace(" ", "").split("::=")
+            lhs = lhs.replace(" ", "")
+            NFAs_tmp[lhs].Build(line)
+        return Grammar(NFAs_tmp)
+
+    def __getitem__(self, symbol: str) -> NFA:
+        return self.NFAs[symbol]
+
 test = NFA("test")
 test.Build("test ::= a b c")
 test.Build("test ::= a b d")
