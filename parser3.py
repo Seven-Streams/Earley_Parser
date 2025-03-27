@@ -16,6 +16,8 @@ class NFA:
     # which the transition is to.
     transitions: Dict[int, Tuple[Union[str, int], int]] = field(default_factory=dict)
     def Build(self, input: str):
+        # lhs is the name of the rule, i.e. the name of the NFA.
+        # rhs are the exact rules.
         lhs, rhs = input.split("::=")
         lhs = lhs.replace(" ", "")
         if(lhs != self.name):
@@ -30,16 +32,20 @@ class NFA:
                     self.transitions[current] = []
                 rule_symbol = Union[str, int]
                 if(symbol in global_rule_dict):
+                    # The symbol is a non-terminal symbol.
                     rule_symbol = global_rule_dict[symbol]
                 else:
+                    # The symbol is a terminal symbol.
                     rule_symbol = symbol
                 flag = False
                 for transition in self.transitions[current]:
+                    # The transition is already in the NFA.
                     if(transition[0] == rule_symbol):
                         flag = True
                         current = transition[1]
                         break
                 if(not flag):
+                    # It's a brand new transition.
                     self.transitions[current].append((rule_symbol, self.node_cnt))
                     current = self.node_cnt
                     self.node_cnt += 1
@@ -75,6 +81,20 @@ class Grammar:
 
     def __getitem__(self, symbol: str) -> NFA:
         return self.NFAs[symbol]
+
+@dataclass(frozen=True)
+class State:
+    rule_name: str
+    node_num: int
+    pos: int
+    accepted: bool = False
+    def terminated(self) -> bool:
+        return self.accepted
+    def __repr__(self):
+        return f"State({self.rule_name}, {self.node_num}, {self.pos}, {self.accepted})"
+    def __hash__(self):
+        return hash((self.rule_name, self.node_num, self.pos, self.accepted))
+
 
 test = NFA("test")
 test.Build("test ::= a b c")
