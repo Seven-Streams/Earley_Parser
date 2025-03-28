@@ -5,6 +5,9 @@ global_rule_dict: dict[str, int] = {}
 ROOT_RULE= "$"
 root_rule_number = 0
 EPSILON = "EPSILON"
+XGRAMMAR_EVERYTHING_FLAG = "EVERYTHING"
+XGRAMMAR_DIGIT_FLAG = "DIGIT"
+XGRAMMAR_HEX_FLAG = "HEX"
 
 def is_terminal(symbol: Union[str, int]) -> bool:
     return isinstance(symbol, str)
@@ -60,6 +63,8 @@ class NFA:
         return node in self.final_node
             
     def GetTransitions(self, node: int) -> List[Tuple[Union[str, int], int]]:
+        if(node not in self.transitions):
+            return []
         return self.transitions[node]        
 @dataclass(frozen=True)
 class Grammar:
@@ -120,11 +125,12 @@ class Parser:
         self.current_states.add(State(root_rule_number, 0, 0, self.GetAccepted(root_rule_number, 0)))
     
     def _complete(self, state: State):
-        for parent_state in self.states[state.pos][state.rule_name]:
-            transitions = self.grammar.NFAs[parent_state.rule_name].GetTransitions(parent_state.node_num)
-            for trans in transitions:
-                if trans[0] == state.rule_name:
-                    self.queue.append(State(parent_state.rule_name, trans[1], len(self.states - 1), self.GetAccepted(parent_state.rule_name, trans[1])))    
+        if(state.rule_name in self.states[state.pos]):
+            for parent_state in self.states[state.pos][state.rule_name]:
+                transitions = self.grammar.NFAs[parent_state.rule_name].GetTransitions(parent_state.node_num)
+                for trans in transitions:
+                    if trans[0] == state.rule_name:
+                        self.queue.append(State(parent_state.rule_name, trans[1], parent_state.pos, self.GetAccepted(parent_state.rule_name, trans[1])))    
     
     def _scan_predict(self, state: State, token: str):
         transitions = self.grammar.NFAs[state.rule_name].GetTransitions(state.node_num)
@@ -133,7 +139,10 @@ class Parser:
             if is_terminal(trans[0]):
                 if trans[0] == EPSILON:
                     self.queue.append(State(state.rule_name, trans[1], state.pos, self.GetAccepted(state.rule_name, trans[1])))
-                if trans[0] == token:
+                if ((trans[0] == token) 
+                    or (trans[0] == XGRAMMAR_EVERYTHING_FLAG and token != "\\")
+                    or (trans[0] == XGRAMMAR_DIGIT_FLAG and token.isdigit())
+                    or (trans[0] == XGRAMMAR_HEX_FLAG and token in "0123456789abcdefABCDEF")):
                     self.next_states.add(State(state.rule_name, trans[1], state.pos, self.GetAccepted(state.rule_name, trans[1])))
             else:
             # Predicting.
@@ -150,10 +159,10 @@ class Parser:
         self.current_states.clear()
         while self.queue:
             state = self.queue.pop(0)
-            print("NOW:", state)
             if state in self.current_states:
                 continue
-            if self.grammar.NFAs[state.rule_name].Accepted(state.node_num):
+            self.current_states.add(state)
+            if state.accepted:
                 self._complete(state)
             self._scan_predict(state, token)
         self.current_states = self.next_states
@@ -162,9 +171,6 @@ class Parser:
     def read(self, text: str):
         for token in text:
             self._consume(token)
-            for s in self.current_states:
-                print(s)
-            self._print(len(self.states) - 1)
         return self
         
     def GetAccepted(self, rule:int, node:int) -> bool:
@@ -172,33 +178,28 @@ class Parser:
     
     def Accepted(self) -> bool:
         for state in self.current_states:
-            if state.rule_name == ROOT_RULE and state.accepted:
+            if state.rule_name == root_rule_number and state.accepted:
                 return True
         return False
     
-    def _finalize(self, pos: int):
+    def _finalize(self):
         self.states.append(dict())
         self.queue = [s for s in self.current_states]
+        assert len(self.states) > 0
         self.current_states.clear()
         while self.queue:
             state = self.queue.pop(0)
+            # print("NOW FINALIZE:", state)
             if state in self.current_states:
                 continue
+            self.current_states.add(state)
             if self.grammar.NFAs[state.rule_name].Accepted(state.node_num):
                 self._complete(state)
-            self._scan_predict(state, None)
-        self.current_states = self.next_states
-        self.next_states = set()
-        text = self.inputs
-        accept = len(self.current_states) > 0
-        for s in self.current_states:
-            print(s)
-        print(f"State {pos}: {text[:pos + 1]}•{text[pos+1:]} {accept=}")
-
-    def _print(self, pos: int) -> None:
-        copy = Parser(self.grammar)
-        copy.inputs = self.input + ""
-        return copy._finalize(pos)
+            self._scan_predict(state, "EOF")
+        accept = any(s.rule_name == root_rule_number and s.accepted for s in self.current_states)
+        # for s in self.current_states:
+        #     print(s)
+        print(f"{accept=}")
 
 grammar = Grammar.parse(
     """
@@ -220,4 +221,4 @@ grammar = Grammar.parse(
 )
 # for nfa in grammar.NFAs:
 #     print(nfa)
-Parser(grammar).read("[123]")
+Parser(grammar).read("{\"abc\":true}")._finalize()
