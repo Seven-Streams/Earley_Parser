@@ -50,6 +50,9 @@ class NFA:
                     current = self.node_cnt
                     self.node_cnt += 1
             self.final_node.add(current)
+
+    def Accepted(self, node: int) -> bool:
+        return node in self.final_node
             
 @dataclass(frozen=True)
 class Grammar:
@@ -87,7 +90,7 @@ class State:
     rule_name: str
     node_num: int
     pos: int
-    accepted: bool = False
+    accepted: bool
     def terminated(self) -> bool:
         return self.accepted
     def __repr__(self):
@@ -95,6 +98,44 @@ class State:
     def __hash__(self):
         return hash((self.rule_name, self.node_num, self.pos, self.accepted))
 
+@dataclass
+class Parser:
+    grammar: Grammar
+    
+    def __post_init__(self):
+        self.states: List[Dict[str, State]] = []
+        self.input = ""
+        self.next_states: Set[State] = set()
+        self.current_states: Set[State] = set()
+        self.current_states.add(State(ROOT_RULE, 0, 0, self.grammar.NFAs[ROOT_RULE].Accepted(0)))
+    
+    def _complete(self, state: State):
+        pass
+    
+    def _trans(self, state: State, token: str):
+        pass
+    
+    def _consume(self, token: str):
+        self.states.append(Dict())
+        self.input += token
+        queue = [s for s in self.current_states]
+        self.current_states.clear()
+        while queue:
+            state = queue.pop(0)
+            if state in self.current_states:
+                continue
+            if self.grammar.NFAs[state.rule_name].Accepted(state.node_num):
+                self._complete(state)
+            self._trans(state, token)
+            pass
+        self.current_states = self.next_states
+        self.next_states = set()
+    
+    def read(self, text: str):
+        for token in text:
+            self._consume(token)
+        return self
+        
 
 test = NFA("test")
 test.Build("test ::= a b c")
