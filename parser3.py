@@ -171,6 +171,7 @@ class Parser:
     def read(self, text: str):
         for token in text:
             self._consume(token)
+            self._print()
         return self
         
     def GetAccepted(self, rule:int, node:int) -> bool:
@@ -181,25 +182,9 @@ class Parser:
             if state.rule_name == root_rule_number and state.accepted:
                 return True
         return False
-    
-    def _finalize(self):
-        self.states.append(dict())
-        self.queue = [s for s in self.current_states]
-        assert len(self.states) > 0
-        self.current_states.clear()
-        while self.queue:
-            state = self.queue.pop(0)
-            # print("NOW FINALIZE:", state)
-            if state in self.current_states:
-                continue
-            self.current_states.add(state)
-            if self.grammar.NFAs[state.rule_name].Accepted(state.node_num):
-                self._complete(state)
-            self._scan_predict(state, "EOF")
-        accept = any(s.rule_name == root_rule_number and s.accepted for s in self.current_states)
-        # for s in self.current_states:
-        #     print(s)
-        print(f"{accept=}")
+
+    def _print(self):
+        print (self.input ,len(self.current_states) > 0)
 
 grammar = Grammar.parse(
     """
@@ -221,4 +206,4 @@ grammar = Grammar.parse(
 )
 # for nfa in grammar.NFAs:
 #     print(nfa)
-Parser(grammar).read("{\"abc\":true}")._finalize()
+Parser(grammar).read("[\"asv\"]]")
