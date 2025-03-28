@@ -50,8 +50,8 @@ class NFA:
         # rhs are the exact rules.
         lhs, rhs = input.split("::=")
         lhs = lhs.replace(" ", "")
-        if(lhs != self.name):
-            print(lhs, len(lhs), self.name, len(self.name))
+        if(global_rule_dict[lhs] != self.name):
+            print(global_rule_dict[lhs], self.name)
             raise ValueError("The name of the NFA should be the same as the lhs of the rule.")
         for rule in rhs.split("|"):
             current = self.init_node
@@ -137,8 +137,8 @@ class Grammar:
                     global_rule_dict[lhs] = root_rule_number
                 else:
                     global_rule_dict[lhs] = cnt
-            if(lhs not in NFAs_tmp):
-                NFAs_tmp[global_rule_dict[lhs]] = NFA(lhs)
+            if(global_rule_dict[lhs] not in NFAs_tmp):
+                NFAs_tmp[global_rule_dict[lhs]] = NFA(global_rule_dict[lhs])
         # Do the second scanning. Replace the non-terminal symbols with the corresponding number.
         cnt = 0
         for line in rule.split("\n"):
@@ -208,7 +208,10 @@ class Parser:
                 if ((trans[0] == token) 
                     or (trans[0] == XGRAMMAR_EVERYTHING_FLAG and token != "\\")
                     or (trans[0] == XGRAMMAR_DIGIT_FLAG and token.isdigit())
-                    or (trans[0] == XGRAMMAR_HEX_FLAG and token in "0123456789abcdefABCDEF")):
+                    or (trans[0] == XGRAMMAR_HEX_FLAG and token in "0123456789abcdefABCDEF")
+                    or (trans[0] == WHITE_SPACE_FLAG and token == " ")
+                    or (trans[0] == VARIABLE_FLAG and token in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_")
+                    or (trans[0] ==OR_FLAG and token == "|")):
                     self.next_states.add(State(state.rule_name, trans[1], state.pos, self.GetAccepted(state.rule_name, trans[1])))
             else:
             # Predicting.
@@ -239,9 +242,51 @@ class Parser:
             indent = self.CheckIndent(token)
             if indent:
                 continue
+            if token == "\n":
+                self.lines += 1
+                self.MarkIndent()
+                continue
             self._consume(token)
-            self._print()
         return self
+        
+        
+    def MarkIndent(self):
+        self.states.append(dict())
+        self.queue = [s for s in self.current_states]
+        self.current_states.clear()
+        while self.queue:
+            state = self.queue.pop(0)
+            if state in self.current_states:
+                continue
+            self.current_states.add(state)
+            if state.accepted:
+                self._complete(state)
+        for s in self.current_states:
+            if s.accepted and complete_line_rules.__contains__(s.rule_name):
+                #Detect the loop.
+                if force_rules.__contains__(s.rule_name):
+                    self.force_indent = True
+                else:
+                    self.force_indent = False
+                if loop_rules.__contains__(s.rule_name):
+                    self.loop_indent.append(self.now_indent)
+                if if_rules.__contains__(s.rule_name):
+                    self.if_indent.append(self.now_indent)
+                #To check the new lines.
+                if def_rules.__contains__(s.rule_name):
+                    self.define = True
+                if need_loop_rules.__contains__(s.rule_name):
+                    if self.loop_indent == []:
+                        raise Exception("Indentation Error: Need Loop")
+                if need_def_rules.__contains__(s.rule_name):
+                    if not self.define:
+                        raise Exception("Indentation Error: Need Define")
+                if need_if_rules.__contains__(s.rule_name):
+                    if not self.now_indent in self.if_indent:
+                        raise Exception("Indentation Error: If else Error")
+                self.__post_init__()
+                return
+        raise Exception("Syntax Error!")    
         
     def GetAccepted(self, rule:int, node:int) -> bool:
         return self.grammar.NFAs[rule].Accepted(node)
@@ -296,26 +341,64 @@ class Parser:
         return False
 
     def _print(self):
-        print (self.input ,len(self.current_states) > 0)
+        assert(len(self.current_states) > 0)
+        # print(self.input ,len(self.current_states) > 0)
 
 grammar = Grammar.parse(
     """
-    $ ::= Json
-    Json ::= Array | Object
-    Array ::= [ Element ]
-    Object ::= { ObjectElement }
-    ObjectElement ::= String : Value , ObjectElement | String : Value
-    Element ::= Value , Element | Value
-    Value ::= String | Int | Float | Object | Array | Bool | Null
-    Float ::= Int . Int | - Int . Int
-    Int ::= DIGIT | Int DIGIT | - Int
-    String ::= " " | " chars " 
+    $ ::= python
+    python ::= python whitespaces | if_statement | else_statement | while_statement | for_statement | break_statement | continue_statement | return_statement | function_definition | expr_statement
+    function_definition ::= d e f whitespaces variable ( args ) : FORCE_FLAG DEF_FLAG COMPLETE_FLAG | d e f whitespaces variable ( ) : FORCE_FLAG DEF_FLAG COMPLETE_FLAG 
+    args ::= args , variable | variable
+    Float ::= Int . Int 
+    Int ::= DIGIT | Int DIGIT 
+    Array ::= expr [ expr ] | expr [ ] | { } | [ ] | [ in_args ]
+    Dict ::= { } | { key_values }
+    key_values ::= key_values , expr : expr | expr : expr
+    String ::= " " | " chars " | ' ' | ' chars '
+    expr_statement ::= expr COMPLETE_FLAG
+    if_statement ::= i f whitespaces expr : FORCE_FLAG IF_FLAG COMPLETE_FLAG
+    else_statement ::= e l s e : NEED_IF_FLAG COMPLETE_FLAG FORCE_FLAG
+    while_statement ::= w h i l e whitespaces expr : LOOP_FLAG COMPLETE_FLAG FORCE_FLAG
+    for_statement ::= f o r whitespaces variable whitespaces i n whitespaces expr : LOOP_FLAG COMPLETE_FLAG FORCE_FLAG
+    break_statement ::= b r e a k NEED_LOOP_FLAG COMPLETE_FLAG
+    continue_statement ::= c o n t i n u e NEED_LOOP_FLAG COMPLETE_FLAG
+    return_statement ::= r e t u r n whitespaces expr NEED_DEF_FLAG COMPLETE_FLAG | r e t u r n NEED_DEF_FLAG COMPLETE_FLAG
+    assign_op ::= = | + = | - = | * = | / = | % = | & =  | ^ = | < < = | > > = | * * = | OR_FLAG = | / / =
+    expr_binary_op ::= + | - | * | / | % | & | ^ | < < | > > | * * | = = | ! = | < | > | < = | > = | a n d | o r | OR_FLAG | / / | i s | i n
+    expr_unary_op ::= + | - | ~ | n o t
+    in_args ::= in_args , expr | expr
+    func_call ::= variable ( in_args ) | variable ( )
+    expr ::= expr_raw | whitespaces expr_raw | expr whitespaces | whitespaces expr whitespaces
+    expr_raw ::= Int | Float | String | Bool | variable | func_call | expr expr_binary_op expr | expr_unary_op expr | ( expr ) | expr assign_op expr | Array | expr . expr | expr , expr | Dict
+    variable ::= variable_raw | whitespaces variable_raw | variable whitespaces | whitespaces variable whitespaces
+    variable_raw ::= variable_char | variable_raw variable_char | variable_raw DIGIT
+    variable_char ::= VARIABLE_FLAG
     chars ::= EVERYTHING | chars EVERYTHING | chars escaped | escaped
-    escaped ::= \\ "  | \\ /  | \\ n  | \\ b  | \\ f  | \\ r | \\ t | \\ u HEX HEX HEX HEX
-    Bool ::= t r u e | f a l s e
-    Null ::= n u l l
+    escaped ::= \\ \\ | \\ "  | \\ n  | \\ b  | \\ f  | \\ r | \\ t 
+    Bool ::= T r u e | F a l s e
+    whitespaces ::= WHITE_SPACE_FLAG | whitespaces WHITE_SPACE_FLAG
     """
 )
 # for nfa in grammar.NFAs:
 #     print(nfa)
-Parser(grammar).read("[\"asv\"]]")
+Parser(grammar, [], []).read(
+    """
+def count_even_numbers(limit):
+    count = 0
+    number += 1
+    while number <= limit:
+        if number % 2 == 0:
+            count = count + 1
+        number = number + 1
+    return count
+
+limit = 10
+result = count_even_numbers(limit)
+
+if result > 0:
+    print("There are",result, "even numbers.")
+else:
+    print("No even numbers found.")
+    """
+)
