@@ -4,14 +4,14 @@ from typing import List, Set, Tuple, Union, Dict
 global_rule_dict: dict[str, int] = {}
 ROOT_RULE= "$"
 root_rule_number = 0
-EPSILON = "NULL"
+EPSILON = "EPSILON"
 
 def is_terminal(symbol: Union[str, int]) -> bool:
     return isinstance(symbol, str)
 
 @dataclass
 class NFA:
-    name: str
+    name: int
     init_node: int = 0
     node_cnt: int = 1
     final_node: Set[int] = field(default_factory=set)
@@ -63,10 +63,10 @@ class NFA:
         return self.transitions[node]        
 @dataclass(frozen=True)
 class Grammar:
-    NFAs: Dict[str, NFA] = field(default_factory=dict)
+    NFAs: Dict[int, NFA] = field(default_factory=dict)
     def parse(rule: str) -> "Grammar":
         global global_rule_dict
-        NFAs_tmp: Dict[str, NFA] = {}
+        NFAs_tmp: Dict[int, NFA] = {}
         cnt = 0
         results = []
         # Do the first scanning. Add all the non-terminal symbols to the dictionary.
@@ -76,9 +76,12 @@ class Grammar:
             lhs, rhs = line.replace(" ", "").split("::=")
             cnt += 1
             if (lhs not in global_rule_dict):
-                global_rule_dict[lhs] = cnt
+                if lhs == ROOT_RULE:
+                    global_rule_dict[lhs] = root_rule_number
+                else:
+                    global_rule_dict[lhs] = cnt
             if(lhs not in NFAs_tmp):
-                NFAs_tmp[lhs] = NFA(lhs)
+                NFAs_tmp[global_rule_dict[lhs]] = NFA(lhs)
         # Do the second scanning. Replace the non-terminal symbols with the corresponding number.
         cnt = 0
         for line in rule.split("\n"):
@@ -86,7 +89,7 @@ class Grammar:
                 continue
             lhs, _ = line.replace(" ", "").split("::=")
             lhs = lhs.replace(" ", "")
-            NFAs_tmp[lhs].Build(line)
+            NFAs_tmp[global_rule_dict[lhs]].Build(line)
         return Grammar(NFAs_tmp)
 
     def __getitem__(self, symbol: str) -> NFA:
@@ -94,7 +97,7 @@ class Grammar:
 
 @dataclass(frozen=True)
 class State:
-    rule_name: str
+    rule_name: int
     node_num: int
     pos: int
     accepted: bool
@@ -110,11 +113,11 @@ class Parser:
     grammar: Grammar
     
     def __post_init__(self):
-        self.states: List[Dict[str, Set[State]]] = []
+        self.states: List[Dict[int, Set[State]]] = []
         self.input = ""
         self.next_states: Set[State] = set()
         self.current_states: Set[State] = set()
-        self.current_states.add(State(ROOT_RULE, 0, 0, self.GetAccepted(ROOT_RULE, 0)))
+        self.current_states.add(State(root_rule_number, 0, 0, self.GetAccepted(root_rule_number, 0)))
     
     def _complete(self, state: State):
         for parent_state in self.states[state.pos][state.rule_name]:
@@ -134,12 +137,47 @@ class Parser:
                     self.next_states.add(State(state.rule_name, trans[1], state.pos, self.GetAccepted(state.rule_name, trans[1])))
             else:
             # Predicting.
-                self.states[len(self.states - 1)][trans[0]].add(state)
+                if(int(trans[0]) not in self.states[len(self.states) - 1]):
+                    self.states[len(self.states) - 1][int(trans[0])] = set()
+                self.states[len(self.states) - 1][int(trans[0])].add(state)
+                self.queue.append(State(trans[0], 0, len(self.states) - 1, self.GetAccepted(state.rule_name, 0)))
             
     
     def _consume(self, token: str):
-        self.states.append(Dict())
+        self.states.append(dict())
         self.input += token
+        self.queue = [s for s in self.current_states]
+        self.current_states.clear()
+        while self.queue:
+            state = self.queue.pop(0)
+            print("NOW:", state)
+            if state in self.current_states:
+                continue
+            if self.grammar.NFAs[state.rule_name].Accepted(state.node_num):
+                self._complete(state)
+            self._scan_predict(state, token)
+        self.current_states = self.next_states
+        self.next_states = set()
+    
+    def read(self, text: str):
+        for token in text:
+            self._consume(token)
+            for s in self.current_states:
+                print(s)
+            self._print(len(self.states) - 1)
+        return self
+        
+    def GetAccepted(self, rule:int, node:int) -> bool:
+        return self.grammar.NFAs[rule].Accepted(node)
+    
+    def Accepted(self) -> bool:
+        for state in self.current_states:
+            if state.rule_name == ROOT_RULE and state.accepted:
+                return True
+        return False
+    
+    def _finalize(self, pos: int):
+        self.states.append(dict())
         self.queue = [s for s in self.current_states]
         self.current_states.clear()
         while self.queue:
@@ -148,21 +186,38 @@ class Parser:
                 continue
             if self.grammar.NFAs[state.rule_name].Accepted(state.node_num):
                 self._complete(state)
-            self._scan_predict(state, token)
-            pass
+            self._scan_predict(state, None)
         self.current_states = self.next_states
         self.next_states = set()
-    
-    def read(self, text: str):
-        for token in text:
-            self._consume(token)
-        return self
-        
-    def GetAccepted(self, rule:str, node:int) -> bool:
-        return self.grammar.NFAs[rule].Accepted(node)
+        text = self.inputs
+        accept = len(self.current_states) > 0
+        for s in self.current_states:
+            print(s)
+        print(f"State {pos}: {text[:pos + 1]}•{text[pos+1:]} {accept=}")
 
-test = NFA("test")
-test.Build("test ::= a b c")
-test.Build("test ::= a b d")
-test.Build("test ::= a c e")
-print(test)
+    def _print(self, pos: int) -> None:
+        copy = Parser(self.grammar)
+        copy.inputs = self.input + ""
+        return copy._finalize(pos)
+
+grammar = Grammar.parse(
+    """
+    $ ::= Json
+    Json ::= Array | Object
+    Array ::= [ Element ]
+    Object ::= { ObjectElement }
+    ObjectElement ::= String : Value , ObjectElement | String : Value
+    Element ::= Value , Element | Value
+    Value ::= String | Int | Float | Object | Array | Bool | Null
+    Float ::= Int . Int | - Int . Int
+    Int ::= DIGIT | Int DIGIT | - Int
+    String ::= " " | " chars " 
+    chars ::= EVERYTHING | chars EVERYTHING | chars escaped | escaped
+    escaped ::= \\ "  | \\ /  | \\ n  | \\ b  | \\ f  | \\ r | \\ t | \\ u HEX HEX HEX HEX
+    Bool ::= t r u e | f a l s e
+    Null ::= n u l l
+    """
+)
+# for nfa in grammar.NFAs:
+#     print(nfa)
+Parser(grammar).read("[123]")
