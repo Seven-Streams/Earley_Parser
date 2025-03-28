@@ -4,6 +4,11 @@ from typing import List, Set, Tuple, Union, Dict
 global_rule_dict: dict[str, int] = {}
 ROOT_RULE= "$"
 root_rule_number = 0
+EPSILON = "NULL"
+
+def is_terminal(symbol: Union[str, int]) -> bool:
+    return isinstance(symbol, str)
+
 @dataclass
 class NFA:
     name: str
@@ -54,6 +59,8 @@ class NFA:
     def Accepted(self, node: int) -> bool:
         return node in self.final_node
             
+    def GetTransitions(self, node: int) -> List[Tuple[Union[str, int], int]]:
+        return self.transitions[node]        
 @dataclass(frozen=True)
 class Grammar:
     NFAs: Dict[str, NFA] = field(default_factory=dict)
@@ -103,30 +110,45 @@ class Parser:
     grammar: Grammar
     
     def __post_init__(self):
-        self.states: List[Dict[str, State]] = []
+        self.states: List[Dict[str, Set[State]]] = []
         self.input = ""
         self.next_states: Set[State] = set()
         self.current_states: Set[State] = set()
-        self.current_states.add(State(ROOT_RULE, 0, 0, self.grammar.NFAs[ROOT_RULE].Accepted(0)))
+        self.current_states.add(State(ROOT_RULE, 0, 0, self.GetAccepted(ROOT_RULE, 0)))
     
     def _complete(self, state: State):
-        pass
+        for parent_state in self.states[state.pos][state.rule_name]:
+            transitions = self.grammar.NFAs[parent_state.rule_name].GetTransitions(parent_state.node_num)
+            for trans in transitions:
+                if trans[0] == state.rule_name:
+                    self.queue.append(State(parent_state.rule_name, trans[1], len(self.states - 1), self.GetAccepted(parent_state.rule_name, trans[1])))    
     
-    def _trans(self, state: State, token: str):
-        pass
+    def _scan_predict(self, state: State, token: str):
+        transitions = self.grammar.NFAs[state.rule_name].GetTransitions(state.node_num)
+        for trans in transitions:
+            # Scanning.
+            if is_terminal(trans[0]):
+                if trans[0] == EPSILON:
+                    self.queue.append(State(state.rule_name, trans[1], state.pos, self.GetAccepted(state.rule_name, trans[1])))
+                if trans[0] == token:
+                    self.next_states.add(State(state.rule_name, trans[1], state.pos, self.GetAccepted(state.rule_name, trans[1])))
+            else:
+            # Predicting.
+                self.states[len(self.states - 1)][trans[0]].add(state)
+            
     
     def _consume(self, token: str):
         self.states.append(Dict())
         self.input += token
-        queue = [s for s in self.current_states]
+        self.queue = [s for s in self.current_states]
         self.current_states.clear()
-        while queue:
-            state = queue.pop(0)
+        while self.queue:
+            state = self.queue.pop(0)
             if state in self.current_states:
                 continue
             if self.grammar.NFAs[state.rule_name].Accepted(state.node_num):
                 self._complete(state)
-            self._trans(state, token)
+            self._scan_predict(state, token)
             pass
         self.current_states = self.next_states
         self.next_states = set()
@@ -136,6 +158,8 @@ class Parser:
             self._consume(token)
         return self
         
+    def GetAccepted(self, rule:str, node:int) -> bool:
+        return self.grammar.NFAs[rule].Accepted(node)
 
 test = NFA("test")
 test.Build("test ::= a b c")
