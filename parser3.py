@@ -5,9 +5,31 @@ global_rule_dict: dict[str, int] = {}
 ROOT_RULE= "$"
 root_rule_number = 0
 EPSILON = "EPSILON"
+# The following flags are used to represent a universal symbol.
 XGRAMMAR_EVERYTHING_FLAG = "EVERYTHING"
-XGRAMMAR_DIGIT_FLAG = "DIGIT"
 XGRAMMAR_HEX_FLAG = "HEX"
+XGRAMMAR_DIGIT_FLAG = "DIGIT"
+LOOP_FLAG = "LOOP_FLAG"
+DEF_FLAG = "DEF_FLAG"
+FORCE_FLAG = "FORCE_FLAG"
+NEED_LOOP_FLAG = "NEED_LOOP_FLAG"
+NEED_DEF_FLAG = "NEED_DEF_FLAG"
+IF_FLAG = "IF_FLAG"
+NEED_IF_FLAG = "NEED_IF_FLAG"
+COMPLETE_FLAG = "COMPLETE_FLAG"
+WHITE_SPACE_FLAG = "WHITE_SPACE_FLAG"
+OR_FLAG = "OR_FLAG"
+VARIABLE_FLAG = "VARIABLE_FLAG"
+
+loop_rules = set()
+def_rules = set()
+force_rules = set()
+if_rules = set()
+need_loop_rules = set()
+need_def_rules = set()
+need_if_rules = set()
+complete_line_rules = set()
+global_rule_dict = {}
 
 def is_terminal(symbol: Union[str, int]) -> bool:
     return isinstance(symbol, str)
@@ -35,6 +57,8 @@ class NFA:
             current = self.init_node
             for symbol in rule.split(" "):
                 if(symbol == ""):
+                    continue
+                if(self.CheckFlags(symbol)):
                     continue
                 if(self.transitions.get(current) == None):
                     self.transitions[current] = []
@@ -65,7 +89,35 @@ class NFA:
     def GetTransitions(self, node: int) -> List[Tuple[Union[str, int], int]]:
         if(node not in self.transitions):
             return []
-        return self.transitions[node]        
+        return self.transitions[node] 
+    
+    # Check the flags of the rule.
+    def CheckFlags(self, symbol:str) -> bool:
+        if(symbol == LOOP_FLAG):
+            loop_rules.add(self.name)
+            return True
+        if(symbol == DEF_FLAG):
+            def_rules.add(self.name)
+            return True
+        if(symbol == FORCE_FLAG):
+            force_rules.add(self.name)
+            return True
+        if(symbol == NEED_LOOP_FLAG):
+            need_loop_rules.add(self.name)
+            return True
+        if(symbol == NEED_DEF_FLAG):
+            need_def_rules.add(self.name)
+            return True
+        if(symbol == IF_FLAG):
+            if_rules.add(self.name)
+            return True
+        if(symbol == NEED_IF_FLAG):
+            need_if_rules.add(self.name)
+            return True
+        if(symbol == COMPLETE_FLAG):
+            complete_line_rules.add(self.name)
+            return True    
+        return False
 @dataclass(frozen=True)
 class Grammar:
     NFAs: Dict[int, NFA] = field(default_factory=dict)
