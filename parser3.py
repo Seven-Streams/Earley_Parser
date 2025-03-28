@@ -168,7 +168,21 @@ class State:
 @dataclass
 class Parser:
     grammar: Grammar
-    
+    loop_indent: List[int]
+    if_indent: List[int]
+    define: bool = False
+    force_indent:bool = False
+    now_indent: int = 0
+    white_space_cnt: int = 0
+    state_num = 0
+    tokens_num = 0
+    tokens_num_without_indent = 0
+    lines = 0
+    complete_times = 0
+    scan_times = 0
+    predict_times = 0
+    init_times = 0
+    line_start: bool = True
     def __post_init__(self):
         self.states: List[Dict[int, Set[State]]] = []
         self.input = ""
@@ -222,6 +236,9 @@ class Parser:
     
     def read(self, text: str):
         for token in text:
+            indent = self.CheckIndent(token)
+            if indent:
+                continue
             self._consume(token)
             self._print()
         return self
@@ -233,6 +250,49 @@ class Parser:
         for state in self.current_states:
             if state.rule_name == root_rule_number and state.accepted:
                 return True
+        return False
+    
+    def CheckIndent(self, token: str) -> bool:
+        if token == " " and self.line_start:
+            self.tokens_num += 1
+            self.white_space_cnt += 1 
+            return True
+        
+        if token == "\n":
+            # An empty line.
+            if(self.line_start):
+                return True
+            self.line_start = True
+            self.white_space_cnt = 0
+            
+        if token != " " and token != "\n" and self.line_start:
+            # Indentation should be multiple of 4.
+            if self.white_space_cnt % 4 != 0:
+                raise Exception("Indentation Error: Not Multiple of 4")
+            # Too deep indentation.
+            if (self.now_indent < self.white_space_cnt - 4):
+                raise Exception("Indentation Error: Too Deep Indentation")
+            if (self.now_indent == self.white_space_cnt - 4) and not self.force_indent:
+                raise Exception("Indentation Error: Too Deep Indentation")
+            # The forced indentation is not satisfied.
+            if self.force_indent and self.now_indent != self.white_space_cnt - 4:
+                raise Exception("Indentation Error: Forced Indentation")
+            # The same indentation.
+            if self.now_indent == self.white_space_cnt:
+                pass
+            # The indentation is appended.
+            if self.now_indent == self.white_space_cnt - 4:
+                self.now_indent = self.white_space_cnt
+            # The indentation is popped.
+            if self.now_indent > self.white_space_cnt:
+                self.now_indent = self.white_space_cnt
+                if(self.now_indent == 0):
+                    self.define = False
+                    while(self.loop_indent != [] and self.loop_indent[-1] > self.now_indent):
+                        self.loop_indent.pop()
+                    while(self.if_indent != [] and self.if_indent[-1] > self.now_indent):
+                        self.if_indent.pop()
+            self.line_start = False
         return False
 
     def _print(self):
