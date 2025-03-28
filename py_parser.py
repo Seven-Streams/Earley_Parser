@@ -228,7 +228,7 @@ class Parser:
                 new_set.add(state)
                 self._scan(state, cur_pos, terminal)
         # If the text is a new line.
-        self.state_num += len(self.state_set[-2])
+        self.state_num += len(self.state_set[-1])
         self.tokens_num += 1
         self.tokens_num_without_indent += 1
         if(text == "\n"):
@@ -343,23 +343,25 @@ class Parser:
                 self.line_start = False
                           
             self._consume(token)
-        self._print(length)
+        # self._print(length)
         print("The number of states is", self.state_num)
-        print("The number of tokens is", self.tokens_num)
-        print("The number of lines is", self.lines)
-        print("The number of tokens without indent is", self.tokens_num_without_indent)
+        
+        # print("The number of tokens is", self.tokens_num)
+        # print("The number of lines is", self.lines)
+        # print("The number of tokens without indent is", self.tokens_num_without_indent)
         print("The number of complete lines is", self.complete_times)
         print("The number of scan times is", self.scan_times)
         print("The number of predict times is", self.predict_times)
-        print("The average line tokens without indent is", self.tokens_num_without_indent / self.lines)
-        print("The ratio of states to tokens without indents is", self.state_num / self.tokens_num_without_indent)
-        print("The ratio of complete times to tokens without indents is", self.complete_times / self.tokens_num_without_indent)
-        print("The ratio of scan times to tokens without indents is", self.scan_times / self.tokens_num_without_indent)
-        print("The ratio of predict times to tokens without indents is", self.predict_times / self.tokens_num_without_indent)
-        print("The line average of the states is", self.state_num / self.lines)
-        print("The line average of complete times is", self.complete_times / self.lines)
-        print("The line average of scan times is", self.scan_times / self.lines)
-        print("The line average of predict times is", self.predict_times / self.lines)
+        print("The transition times is", self.complete_times + self.scan_times + self.predict_times)
+        # print("The average line tokens without indent is", self.tokens_num_without_indent / self.lines)
+        # print("The ratio of states to tokens without indents is", self.state_num / self.tokens_num_without_indent)
+        # print("The ratio of complete times to tokens without indents is", self.complete_times / self.tokens_num_without_indent)
+        # print("The ratio of scan times to tokens without indents is", self.scan_times / self.tokens_num_without_indent)
+        # print("The ratio of predict times to tokens without indents is", self.predict_times / self.tokens_num_without_indent)
+        # print("The line average of the states is", self.state_num / self.lines)
+        # print("The line average of complete times is", self.complete_times / self.lines)
+        # print("The line average of scan times is", self.scan_times / self.lines)
+        # print("The line average of predict times is", self.predict_times / self.lines)
         return self
 # In my realization, $ shouldn't have multiple rules. i.e.
 # $ ::= Array | Object is undefined.
@@ -419,22 +421,76 @@ grammar = Grammar.parse(
 now_time = time.time()
 Parser(grammar, [], []).read(
     """
-def count_even_numbers(limit):
-    count = 0
-    number += 1
-    while number <= limit:
-        if number % 2 == 0:
-            count = count + 1
-        number = number + 1
-    return count
+def initialize_graph(vertices):
+    graph = {}
+    i = 1
+    while i <= vertices:
+        graph[i] = {}
+        i = i + 1
+    return graph
 
-limit = 10
-result = count_even_numbers(limit)
+def add_edge(graph, u, v, capacity):
+    if u in graph:
+        graph[u][v] = capacity
+    if v in graph:
+        graph[v][u] = 0
 
-if result > 0:
-    print("There are",result, "even numbers.")
+def bfs(graph, source, sink, parent, vertices):
+    visited = {}
+    i = 1
+    while i <= vertices:
+        visited[i] = False
+        i = i + 1
+    queue = [source]
+    visited[source] = True
+    while len(queue) > 0:
+        current = queue.pop(0)
+        for neighbor in graph[current]:
+            if not visited[neighbor] and graph[current][neighbor] > 0:
+                queue.append(neighbor)
+                visited[neighbor] = True
+                parent[neighbor] = current
+                if neighbor == sink:
+                    return True
+    return False
+
+def edmonds_karp(graph, source, sink, vertices):
+    parent = {}
+    max_flow = 0
+    while bfs(graph, source, sink, parent, vertices):
+        path_flow = float('inf')
+        current = sink
+        while current != source:
+            path_flow = min(path_flow, graph[parent[current]][current])
+            current = parent[current]
+        max_flow = max_flow + path_flow
+        current = sink
+        while current != source:
+            prev = parent[current]
+            graph[prev][current] = graph[prev][current] - path_flow
+            graph[current][prev] = graph[current][prev] + path_flow
+            current = prev
+    return max_flow
+
+vertices = 6
+graph = initialize_graph(vertices)
+add_edge(graph, 1, 2, 16)
+add_edge(graph, 1, 3, 13)
+add_edge(graph, 2, 3, 10)
+add_edge(graph, 2, 4, 12)
+add_edge(graph, 3, 2, 4)
+add_edge(graph, 3, 5, 14)
+add_edge(graph, 4, 3, 9)
+add_edge(graph, 4, 6, 20)
+add_edge(graph, 5, 4, 7)
+add_edge(graph, 5, 6, 4)
+source = 1
+sink = 6
+max_flow = edmonds_karp(graph, source, sink, vertices)
+if max_flow > 0:
+    print("The maximum possible flow is", max_flow)
 else:
-    print("No even numbers found.")    
+    print("No flow is possible from source to sink")
     """
 )
 print("The time is", time.time() - now_time, "s.")

@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from typing import List, Set, Tuple, Union, Dict
+import time
 
 global_rule_dict: dict[str, int] = {}
 ROOT_RULE= "$"
@@ -196,6 +197,7 @@ class Parser:
                 transitions = self.grammar.NFAs[parent_state.rule_name].GetTransitions(parent_state.node_num)
                 for trans in transitions:
                     if trans[0] == state.rule_name:
+                        self.complete_times += 1
                         self.queue.append(State(parent_state.rule_name, trans[1], parent_state.pos, self.GetAccepted(parent_state.rule_name, trans[1])))    
     
     def _scan_predict(self, state: State, token: str):
@@ -212,16 +214,19 @@ class Parser:
                     or (trans[0] == WHITE_SPACE_FLAG and token == " ")
                     or (trans[0] == VARIABLE_FLAG and token in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_")
                     or (trans[0] ==OR_FLAG and token == "|")):
+                    self.scan_times += 1
                     self.next_states.add(State(state.rule_name, trans[1], state.pos, self.GetAccepted(state.rule_name, trans[1])))
             else:
             # Predicting.
                 if(int(trans[0]) not in self.states[len(self.states) - 1]):
                     self.states[len(self.states) - 1][int(trans[0])] = set()
+                self.predict_times += 1
                 self.states[len(self.states) - 1][int(trans[0])].add(state)
                 self.queue.append(State(trans[0], 0, len(self.states) - 1, self.GetAccepted(state.rule_name, 0)))
             
     
     def _consume(self, token: str):
+        self.state_num += len(self.current_states)
         self.states.append(dict())
         self.input += token
         self.queue = [s for s in self.current_states]
@@ -247,6 +252,11 @@ class Parser:
                 self.MarkIndent()
                 continue
             self._consume(token)
+        print(self.state_num)
+        print(self.complete_times)
+        print(self.scan_times)
+        print(self.predict_times)
+        print(self.complete_times + self.scan_times + self.predict_times)
         return self
         
         
@@ -382,23 +392,80 @@ grammar = Grammar.parse(
 )
 # for nfa in grammar.NFAs:
 #     print(nfa)
+now_time = time.time()
 Parser(grammar, [], []).read(
     """
-def count_even_numbers(limit):
-    count = 0
-    number += 1
-    while number <= limit:
-        if number % 2 == 0:
-            count = count + 1
-        number = number + 1
-    return count
+def initialize_graph(vertices):
+    graph = {}
+    i = 1
+    while i <= vertices:
+        graph[i] = {}
+        i = i + 1
+    return graph
 
-limit = 10
-result = count_even_numbers(limit)
+def add_edge(graph, u, v, capacity):
+    if u in graph:
+        graph[u][v] = capacity
+    if v in graph:
+        graph[v][u] = 0
 
-if result > 0:
-    print("There are",result, "even numbers.")
+def bfs(graph, source, sink, parent, vertices):
+    visited = {}
+    i = 1
+    while i <= vertices:
+        visited[i] = False
+        i = i + 1
+    queue = [source]
+    visited[source] = True
+    while len(queue) > 0:
+        current = queue.pop(0)
+        for neighbor in graph[current]:
+            if not visited[neighbor] and graph[current][neighbor] > 0:
+                queue.append(neighbor)
+                visited[neighbor] = True
+                parent[neighbor] = current
+                if neighbor == sink:
+                    return True
+    return False
+
+def edmonds_karp(graph, source, sink, vertices):
+    parent = {}
+    max_flow = 0
+    while bfs(graph, source, sink, parent, vertices):
+        path_flow = float('inf')
+        current = sink
+        while current != source:
+            path_flow = min(path_flow, graph[parent[current]][current])
+            current = parent[current]
+        max_flow = max_flow + path_flow
+        current = sink
+        while current != source:
+            prev = parent[current]
+            graph[prev][current] = graph[prev][current] - path_flow
+            graph[current][prev] = graph[current][prev] + path_flow
+            current = prev
+    return max_flow
+
+vertices = 6
+graph = initialize_graph(vertices)
+add_edge(graph, 1, 2, 16)
+add_edge(graph, 1, 3, 13)
+add_edge(graph, 2, 3, 10)
+add_edge(graph, 2, 4, 12)
+add_edge(graph, 3, 2, 4)
+add_edge(graph, 3, 5, 14)
+add_edge(graph, 4, 3, 9)
+add_edge(graph, 4, 6, 20)
+add_edge(graph, 5, 4, 7)
+add_edge(graph, 5, 6, 4)
+source = 1
+sink = 6
+max_flow = edmonds_karp(graph, source, sink, vertices)
+if max_flow > 0:
+    print("The maximum possible flow is", max_flow)
 else:
-    print("No even numbers found.")
+    print("No flow is possible from source to sink")
     """
 )
+print("The time is", time.time() - now_time, "s.")
+print()
