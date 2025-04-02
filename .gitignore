@@ -2,3 +2,11 @@
 /grammar_parser/antlr-4.13.2-complete.jar
 compile.sh
 .ruff_cache
+grammar_parser/pegLexer.py
+grammar_parser/pegParser.py
+grammar_parser/pegVisitor.py
+grammar_parser/pegLexer.tokens
+grammar_parser/pegLexer.interp
+grammar_parser/peg.tokens
+grammar_parser/peg.interp
+grammar_parser/__pycache__

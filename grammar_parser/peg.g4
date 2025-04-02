@@ -1,12 +1,14 @@
 grammar peg;
 grammars:
-   matcher*;
+   matcher+;
 keyword:
    '\'' KEYWORDNAME '\'';
 soft_keyword:
    '"' KEYWORDNAME '"';
+rule_name:
+   EXPRESSIONWORD+;
 matcher:
-EXPRESSIONWORD ':' rules
+rule_name ':' rules
 ;
 rules:
    rules '|' expression |
@@ -17,11 +19,12 @@ expression:
    | expression '|' expression #or
    | keyword  #key
    | soft_keyword #s_key
-   | EXPRESSIONWORD #match
+   | rule_name #match
    | '(' expression ')' #s_bracket
    | '[' expression ']' #m_bracket
    | expression '?' #question
    | expression '*' #star
+   | expression '+' #plus
    | keyword '.' expression '+' #separate
    | '&' expression # success_no_consume
    | '!' expression # fail_no_consume
