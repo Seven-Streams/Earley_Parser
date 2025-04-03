@@ -12,3 +12,10 @@ The number of predict times is 133913
 The transition times is 175821
 The time is 0.3104248046875 s.
 
+2115
+24597
+2138
+20353
+47088
+The time is 0.05673837661743164 s.
+

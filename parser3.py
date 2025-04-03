@@ -46,7 +46,10 @@ class NFA:
     # i.e. the corresponding rule. the second element is the node
     # which the transition is to.
     transitions: Dict[int, set[Tuple[Union[str, int], int]]] = field(default_factory=dict)
+    # This dict is used to merge the nodes which have the same transition.
     from_node: Dict[int, set[int]] = field(default_factory=dict)
+    # This is used to check whether the NFA is easy enough to be inlined.
+    easy: bool = True
     
     
     def Build(self, input: str):
@@ -75,6 +78,8 @@ class NFA:
                     # The symbol is a terminal symbol.
                     rule_symbol = symbol
                 flag = False
+                if not is_terminal(rule_symbol):
+                    self.easy = False
                 for transition in self.transitions[current]:
                     # The transition is already in the NFA.
                     if(transition[0] == rule_symbol):
