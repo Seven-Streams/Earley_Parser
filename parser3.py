@@ -45,10 +45,14 @@ class NFA:
     # the value is a union. the first element shows the action,
     # i.e. the corresponding rule. the second element is the node
     # which the transition is to.
-    transitions: Dict[int, Tuple[Union[str, int], int]] = field(default_factory=dict)
+    transitions: Dict[int, set[Tuple[Union[str, int], int]]] = field(default_factory=dict)
+    from_node: Dict[int, set[int]] = field(default_factory=dict)
+    
+    
     def Build(self, input: str):
         # lhs is the name of the rule, i.e. the name of the NFA.
         # rhs are the exact rules.
+        self.from_node[0] = set()
         lhs, rhs = input.split("::=")
         lhs = lhs.replace(" ", "")
         if(global_rule_dict[lhs] != self.name):
@@ -62,7 +66,7 @@ class NFA:
                 if(self.CheckFlags(symbol)):
                     continue
                 if(self.transitions.get(current) == None):
-                    self.transitions[current] = []
+                    self.transitions[current] = set()
                 rule_symbol = Union[str, int]
                 if(symbol in global_rule_dict):
                     # The symbol is a non-terminal symbol.
@@ -79,10 +83,48 @@ class NFA:
                         break
                 if(not flag):
                     # It's a brand new transition.
-                    self.transitions[current].append((rule_symbol, self.node_cnt))
+                    self.transitions[current].add((rule_symbol, self.node_cnt))
+                    if self.node_cnt not in self.from_node:
+                        self.from_node[self.node_cnt] = set()
+                    self.from_node[self.node_cnt].add(current)
                     current = self.node_cnt
                     self.node_cnt += 1
             self.final_node.add(current)
+        self.Simplify()
+
+    def Simplify(self):
+        flag = True
+        deprecated_nodes = set()
+        while flag:
+            flag = False
+            for node in range(0, self.node_cnt):
+                if node in deprecated_nodes:
+                    continue
+                for rhs_node in range(node + 1, self.node_cnt):
+                    if rhs_node in deprecated_nodes:
+                        continue
+                    # The two nodes are equivalent.
+                    if (self.transitions.get(node) == self.transitions.get(rhs_node)) and \
+                        ((node in self.final_node and rhs_node in self.final_node) or \
+                        (node not in self.final_node and rhs_node not in self.final_node)):
+                            flag = True
+                            deprecated_nodes.add(rhs_node)
+                            if rhs_node in self.final_node:
+                                self.final_node.remove(rhs_node)
+                            for parent_node in self.from_node[rhs_node]:
+                                if parent_node in deprecated_nodes:
+                                    continue
+                                queue = []
+                                for trans in self.transitions[parent_node]:
+                                    if trans[1] == rhs_node:
+                                        queue.append(trans)
+                                while queue:
+                                    front = queue.pop(0)
+                                    self.transitions[parent_node].remove(front)
+                                    new_front = (front[0], node)
+                                    self.transitions[parent_node].add(new_front)
+                                
+
 
     def Accepted(self, node: int) -> bool:
         return node in self.final_node
