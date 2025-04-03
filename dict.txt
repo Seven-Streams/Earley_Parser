@@ -1,40 +1,33 @@
-<class 'str'> : <class 'int'>
-$ : 1
-python : 2
-function_definition : 3
-args : 4
-Float : 5
-Int : 6
-Array : 7
-Dict : 8
-key_values : 9
-String : 10
-expr_statement : 11
-if_statement : 12
-else_statement : 13
-while_statement : 14
-for_statement : 15
-break_statement : 16
-continue_statement : 17
-return_statement : 18
-assign_op : 19
-expr_binary_op : 20
-expr_unary_op : 21
-in_args : 22
-func_call : 23
-expr : 24
-expr_raw : 25
-variable : 26
-variable_raw : 27
-variable_char : 28
-chars : 29
-escaped : 30
-Bool : 31
-whitespaces : 32
-The number of states is 2405
-The number of complete lines is 604926
-The number of scan times is 64969
-The number of predict times is 133913
-The transition times is 803808
-The time is 0.3165555000305176 s.
-
+$ 0
+python 2
+function_definition 3
+Float 4
+Int 5
+Array 6
+Dict 7
+key_values 8
+pair 9
+String 10
+expr_statement 11
+if_statement 12
+else_statement 13
+while_statement 14
+for_statement 15
+break_statement 16
+continue_statement 17
+return_statement 18
+assign_op 19
+expr_binary_op 20
+expr_unary_op 21
+in_args 22
+comma_expr 23
+func_call 24
+expr 25
+expr_raw 26
+variable 27
+variable_raw 28
+variable_char 29
+chars 30
+escaped 31
+Bool 32
+whitespaces 33

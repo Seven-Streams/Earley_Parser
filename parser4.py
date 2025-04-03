@@ -22,6 +22,7 @@ WHITE_SPACE_FLAG = "WHITE_SPACE_FLAG"
 OR_FLAG = "OR_FLAG"
 VARIABLE_FLAG = "VARIABLE_FLAG"
 
+
 loop_rules = set()
 def_rules = set()
 force_rules = set()
@@ -35,6 +36,8 @@ global_rule_dict = {}
 def is_terminal(symbol: Union[str, int]) -> bool:
     return isinstance(symbol, str)
 
+def is_universal(symbol: Union[str, int]) -> bool:
+    return isinstance(symbol, str) and symbol in {XGRAMMAR_EVERYTHING_FLAG, XGRAMMAR_HEX_FLAG, XGRAMMAR_DIGIT_FLAG, WHITE_SPACE_FLAG, VARIABLE_FLAG, OR_FLAG}
 @dataclass
 class NFA:
     name: int
@@ -66,34 +69,103 @@ class NFA:
             for symbol in rule.split(" "):
                 if(symbol == ""):
                     continue
+                plus_signal = False
+                star_signal = False
+                question_signal = False
+                quotation_signal = False
+                # Check the regex symbols.
+                if(symbol[len(symbol) - 1] == "+"):
+                    plus_signal = True
+                    symbol = symbol[0:len(symbol) - 1]
+                if(symbol[len(symbol) - 1] == "*"):
+                    star_signal = True
+                    symbol = symbol[0:len(symbol) - 1]
+                if(symbol[len(symbol) - 1] == "?"):
+                    question_signal = True
+                    symbol = symbol[0:len(symbol) - 1]
+                if(symbol[0] == '\'' and symbol[len(symbol) - 1] == '\''):
+                    quotation_signal = True
+                    symbol = symbol[1:len(symbol) - 1]
+                if(symbol[0] == '"' and symbol[len(symbol) - 1] == '"'):
+                    quotation_signal = True
+                    symbol = symbol[1:len(symbol) - 1]              
                 if(self.CheckFlags(symbol)):
                     continue
                 if(self.transitions.get(current) == None):
                     self.transitions[current] = set()
-                rule_symbol = Union[str, int]
-                if(symbol in global_rule_dict):
+                rule_symbol_list = []
+                if((not quotation_signal) and (not is_universal(symbol))):
                     # The symbol is a non-terminal symbol.
-                    rule_symbol = global_rule_dict[symbol]
+                    if (symbol not in global_rule_dict):
+                        raise ValueError("The symbol should be in the global rule dictionary.", symbol)
+                    rule_symbol_list.append(global_rule_dict[symbol])
                 else:
+                    if (is_universal(symbol)):
+                        rule_symbol_list.append(symbol)
+                    else:
+                        escape = False
+                        for char in symbol:
+                            if char == "\\" and not escape:
+                                escape = True
+                                continue
+                            escape = False
+                            rule_symbol_list.append(char)
+                            
                     # The symbol is a terminal symbol.
-                    rule_symbol = symbol
-                flag = False
-                if not is_terminal(rule_symbol):
-                    self.easy = False
-                for transition in self.transitions[current]:
-                    # The transition is already in the NFA.
-                    if(transition[0] == rule_symbol):
-                        flag = True
-                        current = transition[1]
-                        break
-                if(not flag):
-                    # It's a brand new transition.
-                    self.transitions[current].add((rule_symbol, self.node_cnt))
-                    if self.node_cnt not in self.from_node:
-                        self.from_node[self.node_cnt] = set()
-                    self.from_node[self.node_cnt].add(current)
-                    current = self.node_cnt
-                    self.node_cnt += 1
+                start_node = current
+                for rule_symbol in rule_symbol_list:
+                    flag = False
+                    if not is_terminal(rule_symbol):
+                        self.easy = False
+                    if not current in self.transitions:
+                        self.transitions[current] = set()
+                    for transition in self.transitions[current]:
+                        # The transition is already in the NFA.
+                        if(transition[0] == rule_symbol):
+                            flag = True
+                            current = transition[1]
+                            break
+                    if(not flag):
+                        # It's a brand new transition.
+                        self.transitions[current].add((rule_symbol, self.node_cnt))
+                        if self.node_cnt not in self.from_node:
+                            self.from_node[self.node_cnt] = set()
+                        self.from_node[self.node_cnt].add(current)
+                        current = self.node_cnt
+                        self.node_cnt += 1
+                
+                if(plus_signal):
+                    back_transition = (EPSILON, start_node)
+                    if(not current in self.transitions):
+                        self.transitions[current] = set()
+                    self.transitions[current].add(back_transition)
+                    if(not start_node in self.from_node):
+                        self.from_node[start_node] = set()
+                    self.from_node[start_node].add(current)
+    
+                if(star_signal):
+                    back_transition = (EPSILON, start_node)
+                    if(not current in self.transitions):
+                        self.transitions[current] = set()
+                    self.transitions[current].add(back_transition)
+                    if(not start_node in self.from_node):
+                        self.from_node[start_node] = set()
+                    self.from_node[start_node].add(current)
+                    empty_transition = (EPSILON, current)
+                    self.transitions[start_node].add(empty_transition)
+                    if(not current in self.from_node):
+                        self.from_node[current] = set()
+                    self.from_node[current].add(start_node)
+                
+                if(question_signal):
+                    empty_transition = (EPSILON, current)
+                    if(not start_node in self.transitions):
+                        self.transitions[start_node] = set()
+                    self.transitions[start_node].add(empty_transition)
+                    if(not current in self.from_node):
+                        self.from_node[current] = set()
+                    self.from_node[current].add(start_node)
+                        
             self.final_node.add(current)
         self.Simplify()
 
@@ -178,7 +250,8 @@ class Grammar:
         for line in rule.split("\n"):
             if not line.strip():
                 continue
-            lhs, rhs = line.replace(" ", "").split("::=")
+            # print (line)
+            lhs, _ = line.replace(" ", "").split("::=")
             cnt += 1
             if (lhs not in global_rule_dict):
                 if lhs == ROOT_RULE:
@@ -216,8 +289,8 @@ class State:
 @dataclass
 class Parser:
     grammar: Grammar
-    loop_indent: List[int]
-    if_indent: List[int]
+    loop_indent: List[int] = field(default_factory=list)
+    if_indent: List[int] = field(default_factory=list)
     define: bool = False
     force_indent:bool = False
     now_indent: int = 0
@@ -239,6 +312,7 @@ class Parser:
         self.current_states.add(State(root_rule_number, 0, 0, self.GetAccepted(root_rule_number, 0)))
     
     def _complete(self, state: State):
+        # print("COMPLETE", state)
         if(state.rule_name in self.states[state.pos]):
             for parent_state in self.states[state.pos][state.rule_name]:
                 transitions = self.grammar.NFAs[parent_state.rule_name].GetTransitions(parent_state.node_num)
@@ -253,6 +327,7 @@ class Parser:
             # Scanning.
             if is_terminal(trans[0]):
                 if trans[0] == EPSILON:
+                    # print(EPSILON, State(state.rule_name, trans[1], state.pos, self.GetAccepted(state.rule_name, trans[1])))
                     self.queue.append(State(state.rule_name, trans[1], state.pos, self.GetAccepted(state.rule_name, trans[1])))
                 if ((trans[0] == token) 
                     or (trans[0] == XGRAMMAR_EVERYTHING_FLAG and token != "\\")
@@ -262,6 +337,7 @@ class Parser:
                     or (trans[0] == VARIABLE_FLAG and token in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_")
                     or (trans[0] ==OR_FLAG and token == "|")):
                     self.scan_times += 1
+                    # print("SCAN", State(state.rule_name, trans[1], state.pos, self.GetAccepted(state.rule_name, trans[1])))
                     self.next_states.add(State(state.rule_name, trans[1], state.pos, self.GetAccepted(state.rule_name, trans[1])))
             else:
             # Predicting.
@@ -269,6 +345,7 @@ class Parser:
                     self.states[len(self.states) - 1][int(trans[0])] = set()
                 self.predict_times += 1
                 self.states[len(self.states) - 1][int(trans[0])].add(state)
+                # print("PREDICT", State(trans[0], 0, len(self.states) - 1, self.GetAccepted(state.rule_name, 0)))
                 self.queue.append(State(trans[0], 0, len(self.states) - 1, self.GetAccepted(state.rule_name, 0)))
             
     
@@ -277,6 +354,7 @@ class Parser:
         self.states.append(dict())
         self.input += token
         self.queue = [s for s in self.current_states]
+        assert(len(self.queue) > 0)
         self.current_states.clear()
         while self.queue:
             state = self.queue.pop(0)
@@ -291,6 +369,7 @@ class Parser:
     
     def read(self, text: str):
         for token in text:
+            # print(token)
             indent = self.CheckIndent(token)
             if indent:
                 continue
@@ -330,7 +409,6 @@ class Parser:
                     self.loop_indent.append(self.now_indent)
                 if if_rules.__contains__(s.rule_name):
                     self.if_indent.append(self.now_indent)
-                #To check the new lines.
                 if def_rules.__contains__(s.rule_name):
                     self.define = True
                 if need_loop_rules.__contains__(s.rule_name):
@@ -406,42 +484,41 @@ grammar = Grammar.parse(
     """
     $ ::= python
     python ::= python whitespaces | if_statement | else_statement | while_statement | for_statement | break_statement | continue_statement | return_statement | function_definition | expr_statement
-    function_definition ::= d e f whitespaces variable ( args ) : FORCE_FLAG DEF_FLAG COMPLETE_FLAG | d e f whitespaces variable ( ) : FORCE_FLAG DEF_FLAG COMPLETE_FLAG 
-    args ::= args , variable | variable
-    Float ::= Int . Int 
-    Int ::= DIGIT | Int DIGIT 
-    Array ::= expr [ expr ] | expr [ ] | { } | [ ] | [ in_args ]
-    Dict ::= { } | { key_values }
-    key_values ::= key_values , expr : expr | expr : expr
-    String ::= " " | " chars " | ' ' | ' chars '
+    function_definition ::= 'def' whitespaces variable '(' in_args? ')' ':' FORCE_FLAG DEF_FLAG COMPLETE_FLAG
+    Float ::= Int '.' Int 
+    Int ::= DIGIT+
+    Array ::= expr '[' expr? ']' | '[]' | '[' in_args ']'
+    Dict ::= '{' key_values? '}'
+    key_values ::= pair* expr ':' expr 
+    pair ::= expr ':' expr ',' 
+    String ::= "\"" chars? "\" | '\'' chars? '\''
     expr_statement ::= expr COMPLETE_FLAG
-    if_statement ::= i f whitespaces expr : FORCE_FLAG IF_FLAG COMPLETE_FLAG
-    else_statement ::= e l s e : NEED_IF_FLAG COMPLETE_FLAG FORCE_FLAG
-    while_statement ::= w h i l e whitespaces expr : LOOP_FLAG COMPLETE_FLAG FORCE_FLAG
-    for_statement ::= f o r whitespaces variable whitespaces i n whitespaces expr : LOOP_FLAG COMPLETE_FLAG FORCE_FLAG
-    break_statement ::= b r e a k NEED_LOOP_FLAG COMPLETE_FLAG
-    continue_statement ::= c o n t i n u e NEED_LOOP_FLAG COMPLETE_FLAG
-    return_statement ::= r e t u r n whitespaces expr NEED_DEF_FLAG COMPLETE_FLAG | r e t u r n NEED_DEF_FLAG COMPLETE_FLAG
-    assign_op ::= = | + = | - = | * = | / = | % = | & =  | ^ = | < < = | > > = | * * = | OR_FLAG = | / / =
-    expr_binary_op ::= + | - | * | / | % | & | ^ | < < | > > | * * | = = | ! = | < | > | < = | > = | a n d | o r | OR_FLAG | / / | i s | i n
-    expr_unary_op ::= + | - | ~ | n o t
-    in_args ::= in_args , expr | expr
-    func_call ::= variable ( in_args ) | variable ( )
-    expr ::= expr_raw | whitespaces expr_raw | expr whitespaces | whitespaces expr whitespaces
-    expr_raw ::= Int | Float | String | Bool | variable | func_call | expr expr_binary_op expr | expr_unary_op expr | ( expr ) | expr assign_op expr | Array | expr . expr | expr , expr | Dict
-    variable ::= variable_raw | whitespaces variable_raw | variable whitespaces | whitespaces variable whitespaces
+    if_statement ::= 'if' whitespaces expr ':' FORCE_FLAG IF_FLAG COMPLETE_FLAG
+    else_statement ::= 'else:' NEED_IF_FLAG COMPLETE_FLAG FORCE_FLAG
+    while_statement ::= 'while' whitespaces expr ':' LOOP_FLAG COMPLETE_FLAG FORCE_FLAG
+    for_statement ::= 'for' whitespaces variable whitespaces 'in' whitespaces expr ':' LOOP_FLAG COMPLETE_FLAG FORCE_FLAG
+    break_statement ::= 'break' NEED_LOOP_FLAG COMPLETE_FLAG
+    continue_statement ::= 'continue' NEED_LOOP_FLAG COMPLETE_FLAG
+    return_statement ::= 'return' whitespaces expr? NEED_DEF_FLAG COMPLETE_FLAG
+    assign_op ::= '=' | '+=' | '-=' | '*=' | '/=' | '%=' | '&='  | '^=' | '<<=' | '>>=' | '**=' | OR_FLAG '=' | '//='
+    expr_binary_op ::= '+' | '-' | '*' | '/' | '%' | '&' | '^' | '<<' | '>>' | '**' | '==' | '!=' | '<' | '>' | '<=' | '>=' | 'and' | 'or' | OR_FLAG | '//' | 'is' | 'in'
+    expr_unary_op ::= '+' | '-' | '~' | 'not'
+    in_args ::= expr comma_expr* 
+    comma_expr ::= ',' expr
+    func_call ::= variable '(' in_args? ')'
+    expr ::= whitespaces? expr_raw whitespaces? 
+    expr_raw ::= Int | Float | String | Bool | variable_raw | func_call | expr expr_binary_op expr | expr_unary_op expr | '(' expr ')' | expr assign_op expr | Array | expr '.' expr | expr ',' expr | Dict
+    variable ::= whitespaces? variable_raw whitespaces?
     variable_raw ::= variable_char | variable_raw variable_char | variable_raw DIGIT
     variable_char ::= VARIABLE_FLAG
     chars ::= EVERYTHING | chars EVERYTHING | chars escaped | escaped
-    escaped ::= \\ \\ | \\ "  | \\ n  | \\ b  | \\ f  | \\ r | \\ t 
-    Bool ::= T r u e | F a l s e
-    whitespaces ::= WHITE_SPACE_FLAG | whitespaces WHITE_SPACE_FLAG
+    escaped ::= '\\\\' | '\\"'  | '\\n'  | '\\b'  | '\\f'  | '\\r' | '\\t' 
+    Bool ::= 'True' | 'False'
+    whitespaces ::= WHITE_SPACE_FLAG+
     """
 )
-# for nfa in grammar.NFAs:
-#     print(nfa)
 now_time = time.time()
-Parser(grammar, [], []).read(
+Parser(grammar).read(
     """
 def initialize_graph(vertices):
     graph = {}
