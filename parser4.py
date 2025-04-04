@@ -541,31 +541,30 @@ grammar = Grammar.parse(
     """
     $ ::= python
     python ::= python whitespaces | if_statement | else_statement | while_statement | for_statement | break_statement | continue_statement | return_statement | function_definition | expr_statement
-    function_definition ::= 'def' whitespaces variable '(' in_args? ')' ':' FORCE_FLAG COMPLETE_FLAG
+    function_definition ::= 'def' whitespaces variable '(' args? ')' ':' FORCE_FLAG COMPLETE_FLAG
+    args ::= args ',' variable | variable
     Float ::= Int '.' Int 
     Int ::= DIGIT+
-    Array ::= expr '[' expr? ']' | '[]' | '[' in_args ']'
+    Array ::= expr? '[' expr? ']' | '[' in_args ']'
     Dict ::= '{' key_values? '}'
-    key_values ::= pair* expr ':' expr 
-    pair ::= expr ':' expr ',' 
+    key_values ::= key_values ',' expr ':' expr | expr ':' expr
     String ::= "\"" chars? "\" | '\'' chars? '\''
     expr_statement ::= expr COMPLETE_FLAG
     if_statement ::= 'if' whitespaces expr ':' FORCE_FLAG COMPLETE_FLAG
-    else_statement ::= 'else:' COMPLETE_FLAG FORCE_FLAG
+    else_statement ::= 'else' ':' COMPLETE_FLAG FORCE_FLAG
     while_statement ::= 'while' whitespaces expr ':' COMPLETE_FLAG FORCE_FLAG
     for_statement ::= 'for' whitespaces variable whitespaces 'in' whitespaces expr ':' COMPLETE_FLAG FORCE_FLAG
     break_statement ::= 'break' COMPLETE_FLAG
     continue_statement ::= 'continue' COMPLETE_FLAG
-    return_statement ::= 'return' whitespaces expr? COMPLETE_FLAG
-    assign_op ::= '=' | '+=' | '-=' | '*=' | '/=' | '%=' | '&='  | '^=' | '<<=' | '>>=' | '**=' | OR_FLAG '=' | '//='
+    return_statement ::= 'return' whitespaces expr COMPLETE_FLAG | 'return' COMPLETE_FLAG
+    assign_op ::= '=' | '+=' | '-=' | '*=' | '/=' | '%=' | '&=' | '^=' | '<<=' | '>>=' | '**=' | OR_FLAG '=' | '//='
     expr_binary_op ::= '+' | '-' | '*' | '/' | '%' | '&' | '^' | '<<' | '>>' | '**' | '==' | '!=' | '<' | '>' | '<=' | '>=' | 'and' | 'or' | OR_FLAG | '//' | 'is' | 'in'
     expr_unary_op ::= '+' | '-' | '~' | 'not'
-    in_args ::= expr comma_expr* 
-    comma_expr ::= ',' expr
+    in_args ::= in_args ',' expr | expr
     func_call ::= variable '(' in_args? ')'
-    expr ::= whitespaces? expr_raw whitespaces? 
-    expr_raw ::= Int | Float | String | Bool | variable_raw | func_call | expr expr_binary_op expr | expr_unary_op expr | '(' expr ')' | expr assign_op expr | Array | expr '.' expr | expr ',' expr | Dict
-    variable ::= whitespaces? variable_raw whitespaces?
+    expr ::=  whitespaces? expr_raw whitespaces?
+    expr_raw ::= Int | Float | String | Bool | variable | func_call | expr expr_binary_op expr | expr_unary_op expr | '(' expr ')' | expr assign_op expr | Array | expr '.' expr | expr ',' expr | Dict
+    variable ::= whitespaces? variable_raw whitespaces? 
     variable_raw ::= variable_char | variable_raw variable_char | variable_raw DIGIT
     variable_char ::= VARIABLE_FLAG
     chars ::= EVERYTHING | chars EVERYTHING | chars escaped | escaped
