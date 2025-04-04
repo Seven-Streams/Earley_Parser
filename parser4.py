@@ -85,6 +85,7 @@ class NFA:
                     quotation_signal = True
                     symbol = symbol[1:len(symbol) - 1]              
                 if(self.CheckFlags(symbol)):
+                    self.easy = False
                     continue
                 if(self.transitions.get(current) == None):
                     self.transitions[current] = set()
@@ -360,7 +361,52 @@ class Parser:
     predict_times = 0
     init_times = 0
     line_start: bool = True
+    first_init: bool = True
+    
+    def Inline(self):
+        for nfa in self.grammar.NFAs.values():
+            new_dict = {}
+            for transitions in nfa.transitions.values():
+                queue = []
+                new_queue = []
+                for transition in transitions:
+                    if not is_terminal(transition[0]):
+                        to_inline_nfa = self.grammar.NFAs[transition[0]]
+                        # The NFA is easy enough to be inlined.
+                        if not to_inline_nfa.easy:
+                            continue
+                        
+                        # The first transition is enter the rule.
+                        # The second transition is the returning rule.
+                        new_transition = (EPSILON, nfa.node_cnt)
+                        queue.append(transition)
+                        new_queue.append(new_transition)
+                        
+                        for inlined_transitions_raw in to_inline_nfa.transitions:
+                            inlined_transitions = inlined_transitions_raw + nfa.node_cnt
+                            new_dict[inlined_transitions] = set()
+                            for inline_trans in to_inline_nfa.transitions[inlined_transitions_raw]:
+                                new_dict[inlined_transitions].add((inline_trans[0], inline_trans[1] + nfa.node_cnt))
+                        for final_node in to_inline_nfa.final_node:
+                            if not (final_node + nfa.node_cnt) in new_dict:
+                                new_dict[final_node + nfa.node_cnt] = set()
+                            new_dict[final_node + nfa.node_cnt].add((EPSILON, transition[1]))
+                        nfa.node_cnt += to_inline_nfa.node_cnt
+                while queue:
+                    transitions.remove(queue.pop(0))
+                    transitions.add(new_queue.pop(0))
+            for new_transitions in new_dict:
+                if not new_transitions in nfa.transitions:
+                    nfa.transitions[new_transitions] = new_dict[new_transitions]
+                else:
+                    nfa.transitions[new_transitions] = nfa.transitions[new_transitions].union(new_dict[new_transitions])
+            # print(nfa) 
     def __post_init__(self):
+        if self.first_init:
+            self.first_init = False
+            self.Inline()
+            for nfa in self.grammar.NFAs.values():
+                nfa.ToDFA()
         self.states: List[Dict[int, Set[State]]] = []
         self.input = ""
         self.next_states: Set[State] = set()
@@ -415,6 +461,7 @@ class Parser:
         self.current_states.clear()
         while self.queue:
             state = self.queue.pop(0)
+            # print(state)
             if state in self.current_states:
                 continue
             self.current_states.add(state)
@@ -574,8 +621,6 @@ grammar = Grammar.parse(
     """
 )
 
-# for nfa in grammar.NFAs.values():
-#     print(nfa)
 # assert(False)
 now_time = time.time()
 Parser(grammar).read(
