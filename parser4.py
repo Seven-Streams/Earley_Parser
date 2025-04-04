@@ -10,13 +10,7 @@ EPSILON = "EPSILON"
 XGRAMMAR_EVERYTHING_FLAG = "EVERYTHING"
 XGRAMMAR_HEX_FLAG = "HEX"
 XGRAMMAR_DIGIT_FLAG = "DIGIT"
-LOOP_FLAG = "LOOP_FLAG"
-DEF_FLAG = "DEF_FLAG"
 FORCE_FLAG = "FORCE_FLAG"
-NEED_LOOP_FLAG = "NEED_LOOP_FLAG"
-NEED_DEF_FLAG = "NEED_DEF_FLAG"
-IF_FLAG = "IF_FLAG"
-NEED_IF_FLAG = "NEED_IF_FLAG"
 COMPLETE_FLAG = "COMPLETE_FLAG"
 WHITE_SPACE_FLAG = "WHITE_SPACE_FLAG"
 OR_FLAG = "OR_FLAG"
@@ -229,26 +223,8 @@ class NFA:
     
     # Check the flags of the rule.
     def CheckFlags(self, symbol:str) -> bool:
-        if(symbol == LOOP_FLAG):
-            loop_rules.add(self.name)
-            return True
-        if(symbol == DEF_FLAG):
-            def_rules.add(self.name)
-            return True
         if(symbol == FORCE_FLAG):
             force_rules.add(self.name)
-            return True
-        if(symbol == NEED_LOOP_FLAG):
-            need_loop_rules.add(self.name)
-            return True
-        if(symbol == NEED_DEF_FLAG):
-            need_def_rules.add(self.name)
-            return True
-        if(symbol == IF_FLAG):
-            if_rules.add(self.name)
-            return True
-        if(symbol == NEED_IF_FLAG):
-            need_if_rules.add(self.name)
             return True
         if(symbol == COMPLETE_FLAG):
             complete_line_rules.add(self.name)
@@ -565,7 +541,7 @@ grammar = Grammar.parse(
     """
     $ ::= python
     python ::= python whitespaces | if_statement | else_statement | while_statement | for_statement | break_statement | continue_statement | return_statement | function_definition | expr_statement
-    function_definition ::= 'def' whitespaces variable '(' in_args? ')' ':' FORCE_FLAG DEF_FLAG COMPLETE_FLAG
+    function_definition ::= 'def' whitespaces variable '(' in_args? ')' ':' FORCE_FLAG COMPLETE_FLAG
     Float ::= Int '.' Int 
     Int ::= DIGIT+
     Array ::= expr '[' expr? ']' | '[]' | '[' in_args ']'
@@ -574,13 +550,13 @@ grammar = Grammar.parse(
     pair ::= expr ':' expr ',' 
     String ::= "\"" chars? "\" | '\'' chars? '\''
     expr_statement ::= expr COMPLETE_FLAG
-    if_statement ::= 'if' whitespaces expr ':' FORCE_FLAG IF_FLAG COMPLETE_FLAG
-    else_statement ::= 'else:' NEED_IF_FLAG COMPLETE_FLAG FORCE_FLAG
-    while_statement ::= 'while' whitespaces expr ':' LOOP_FLAG COMPLETE_FLAG FORCE_FLAG
-    for_statement ::= 'for' whitespaces variable whitespaces 'in' whitespaces expr ':' LOOP_FLAG COMPLETE_FLAG FORCE_FLAG
-    break_statement ::= 'break' NEED_LOOP_FLAG COMPLETE_FLAG
-    continue_statement ::= 'continue' NEED_LOOP_FLAG COMPLETE_FLAG
-    return_statement ::= 'return' whitespaces expr? NEED_DEF_FLAG COMPLETE_FLAG
+    if_statement ::= 'if' whitespaces expr ':' FORCE_FLAG COMPLETE_FLAG
+    else_statement ::= 'else:' COMPLETE_FLAG FORCE_FLAG
+    while_statement ::= 'while' whitespaces expr ':' COMPLETE_FLAG FORCE_FLAG
+    for_statement ::= 'for' whitespaces variable whitespaces 'in' whitespaces expr ':' COMPLETE_FLAG FORCE_FLAG
+    break_statement ::= 'break' COMPLETE_FLAG
+    continue_statement ::= 'continue' COMPLETE_FLAG
+    return_statement ::= 'return' whitespaces expr? COMPLETE_FLAG
     assign_op ::= '=' | '+=' | '-=' | '*=' | '/=' | '%=' | '&='  | '^=' | '<<=' | '>>=' | '**=' | OR_FLAG '=' | '//='
     expr_binary_op ::= '+' | '-' | '*' | '/' | '%' | '&' | '^' | '<<' | '>>' | '**' | '==' | '!=' | '<' | '>' | '<=' | '>=' | 'and' | 'or' | OR_FLAG | '//' | 'is' | 'in'
     expr_unary_op ::= '+' | '-' | '~' | 'not'
