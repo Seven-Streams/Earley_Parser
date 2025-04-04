@@ -112,6 +112,15 @@ class NFA:
                             rule_symbol_list.append(char)
                             
                     # The symbol is a terminal symbol.
+                if plus_signal or star_signal:
+                    if not current in self.transitions:
+                        self.transitions[current] = set()
+                    self.transitions[current].add((EPSILON, self.node_cnt))
+                    if(not self.node_cnt in self.from_node):
+                        self.from_node[self.node_cnt] = set()
+                    self.from_node[self.node_cnt].add(current)
+                    current = self.node_cnt
+                    self.node_cnt += 1
                 start_node = current
                 for rule_symbol in rule_symbol_list:
                     flag = False
@@ -327,6 +336,7 @@ class Parser:
             # Scanning.
             if is_terminal(trans[0]):
                 if trans[0] == EPSILON:
+                    self.scan_times += 1
                     # print(EPSILON, State(state.rule_name, trans[1], state.pos, self.GetAccepted(state.rule_name, trans[1])))
                     self.queue.append(State(state.rule_name, trans[1], state.pos, self.GetAccepted(state.rule_name, trans[1])))
                 if ((trans[0] == token) 
