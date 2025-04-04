@@ -55,6 +55,7 @@ class NFA:
     easy: bool = True
     
     
+    
     def Build(self, input: str):
         # lhs is the name of the rule, i.e. the name of the NFA.
         # rhs are the exact rules.
@@ -177,7 +178,13 @@ class NFA:
                         
             self.final_node.add(current)
         self.Simplify()
+        self.ToDFA()
 
+
+    # this function is used to merge the nodes such like:
+    # a --rule--> b
+    # c --rule--> b
+    # whose outward transitions are the same.
     def Simplify(self):
         flag = True
         deprecated_nodes = set()
@@ -247,6 +254,70 @@ class NFA:
             complete_line_rules.add(self.name)
             return True    
         return False
+    
+    # This function is used to convert the NFA to DFA.
+    def ToDFA(self) -> None:
+        closures: List[Set[int]] = []
+        DFA_transitions: Dict[int, set[Tuple[Union[str, int], int]]] = {}
+        DFA_final_node: Set[int] = set()
+        init_state = self.FindEpsilonClosure(self.init_node)
+        closures.append(init_state)
+        now_processing = 0
+        while now_processing < len(closures):
+            clousure_transitions = self.GetClosureTransitions(closures[now_processing])
+            for node in closures[now_processing]:
+                if node in self.final_node:
+                    DFA_final_node.add(now_processing)
+            for symbol, nodes in clousure_transitions.items():
+                new_closure = set()
+                for node in nodes:
+                    new_closure = new_closure.union(self.FindEpsilonClosure(node))
+                if new_closure not in closures:
+                    closures.append(new_closure)
+                    closure_num = len(closures) - 1
+                else:
+                    closure_num = closures.index(new_closure)
+                if now_processing not in DFA_transitions:
+                    DFA_transitions[now_processing] = set()
+                DFA_transitions[now_processing].add((symbol, closure_num))
+            now_processing += 1
+        self.transitions = DFA_transitions
+        self.final_node = DFA_final_node
+        self.node_cnt = len(closures)
+        self.final_node = DFA_final_node
+        self.from_node.clear()
+        for from_node, transitions in self.transitions.items():
+            for transition in transitions:
+                if transition[1] not in self.from_node:
+                    self.from_node[transition[1]] = set()
+                self.from_node[transition[1]].add(from_node)
+        self.init_node = 0
+    
+    def FindEpsilonClosure(self, node: int) -> Set[int]:
+        queue = [node]
+        closure = set()
+        closure.add(node)
+        while queue:
+            transitions = self.GetTransitions(queue.pop(0))
+            for transition in transitions:
+                if transition[0] == EPSILON and transition[1] not in closure:
+                    closure.add(transition[1])
+                    queue.append(transition[1])
+        return closure
+    
+    def GetClosureTransitions(self, closure: Set[int]) -> Dict[Union[str, int], Set[int]]:
+        clousure_transitions: Dict[Union[str, int], Set[int]] = {}
+        for node in closure:
+            transitions = self.GetTransitions(node)
+            for transition in transitions:
+                if transition[0] == EPSILON:
+                    continue
+                if transition[0] not in clousure_transitions:
+                    clousure_transitions[transition[0]] = set()
+                clousure_transitions[transition[0]].add(transition[1])
+        return clousure_transitions
+        
+        
 @dataclass(frozen=True)
 class Grammar:
     NFAs: Dict[int, NFA] = field(default_factory=dict)
@@ -527,6 +598,10 @@ grammar = Grammar.parse(
     whitespaces ::= WHITE_SPACE_FLAG+
     """
 )
+
+# for nfa in grammar.NFAs.values():
+#     print(nfa)
+# assert(False)
 now_time = time.time()
 Parser(grammar).read(
     """
