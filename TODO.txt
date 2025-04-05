@@ -1,0 +1,45 @@
+assignment ::= (star_targets '=' )+ (yield_expr | star_expressions) !'=' TYPE_COMMENT?
+assignment ::= single_target augassign ~ (yield_expr | star_expressions) 
+del_stmt ::= 'del' del_targets &(';' | NEWLINE) 
+import_from_targets ::= import_from_as_names !','
+slash_no_default ::= param_no_default+ '/' &')' 
+slash_with_default ::=  param_no_default* param_with_default+ '/' &')' 
+param_no_default ::= param TYPE_COMMENT? &')' 
+param_no_default_star_annotation ::= param_star_annotation TYPE_COMMENT? &')'
+param_with_default ::= param default TYPE_COMMENT? &')' 
+param_maybe_default ::= param default? TYPE_COMMENT? &')' 
+for_stmt ::= 'for' star_targets 'in' ~ star_expressions ':' [TYPE_COMMENT] block [else_block] 
+for_stmt ::= 'async' whitespaces 'for' star_targets 'in' ~ star_expressions ':' [TYPE_COMMENT] block [else_block] 
+with_item ::= expression 'as' star_target &(',' | ')' | ':')
+literal_pattern ::= signed_number !('+' | '-') 
+literal_expr ::= signed_number !('+' | '-')
+pattern_capture_target ::= !"_" NAME !('.' | '(' | '=') 
+value_pattern ::= attr !('.' | '(' | '=') 
+assignment_expression ::= NAME ':=' ~ expression 
+named_expression ::= expression !':='
+slices ::=  slice !',' 
+lambda_slash_no_default ::= lambda_param_no_default+ '/' &':' 
+lambda_slash_with_default ::= lambda_param_no_default* lambda_param_with_default+ '/' &':'
+lambda_param_no_default ::= lambda_param &':'  
+lambda_param_with_default ::= lambda_param default &':' 
+lambda_param_maybe_default ::= lambda_param default? &':'
+for_if_clause ::= 'async' whitespaces 'for' star_targets 'in' ~ disjunction ('if' disjunction )* 
+for_if_clause ::= 'for' star_targets 'in' ~ disjunction ('if' disjunction )* 
+genexp ::= '(' ( assignment_expression | expression !':=') for_if_clauses ')' 
+arguments ::= args ','? &')' 
+args ::= ','.(starred_expression | ( assignment_expression | expression !':=') !'=')+ [',' kwargs ] 
+star_targets ::= star_target !',' 
+star_target ::= '*' (!'*' star_target) 
+target_with_star_atom ::= t_primary '.' NAME !t_lookahead | t_primary '[' slices ']' !t_lookahead 
+single_subscript_attribute_target ::= t_primary '.' NAME !t_lookahead | t_primary '[' slices ']' !t_lookahead 
+t_primary:
+    | t_primary '.' NAME &t_lookahead 
+    | t_primary '[' slices ']' &t_lookahead 
+    | t_primary genexp &t_lookahead 
+    | t_primary '(' [arguments] ')' &t_lookahead 
+    | atom &t_lookahead 
+del_target:
+    | t_primary '.' NAME !t_lookahead 
+    | t_primary '[' slices ']' !t_lookahead
+func_type_comment:
+    | NEWLINE TYPE_COMMENT &(NEWLINE INDENT)
