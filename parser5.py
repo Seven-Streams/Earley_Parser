@@ -18,6 +18,7 @@ VARIABLE_FLAG = "VARIABLE_FLAG"
 NEWLINE = "NEWLINE"
 INDENT = "INDENT"
 DEDENT = "DEDENT"
+ENDMARKER = "ENDMARKER"
 
 
 global_rule_dict = {}
@@ -26,7 +27,7 @@ def is_terminal(symbol: Union[str, int]) -> bool:
     return isinstance(symbol, str)
 
 def is_universal(symbol: Union[str, int]) -> bool:
-    return isinstance(symbol, str) and symbol in {XGRAMMAR_EVERYTHING_FLAG, XGRAMMAR_HEX_FLAG, XGRAMMAR_DIGIT_FLAG, WHITE_SPACE_FLAG, VARIABLE_FLAG, OR_FLAG, NEWLINE, INDENT, DEDENT}
+    return isinstance(symbol, str) and symbol in {XGRAMMAR_EVERYTHING_FLAG, XGRAMMAR_HEX_FLAG, XGRAMMAR_DIGIT_FLAG, WHITE_SPACE_FLAG, VARIABLE_FLAG, OR_FLAG, NEWLINE, INDENT, DEDENT, ENDMARKER, EPSILON}
 @dataclass
 class NFA:
     name: int
@@ -290,7 +291,6 @@ class Grammar:
         for line in rule.split("\n"):
             if not line.strip():
                 continue
-            # print (line)
             lhs, _ = line.replace(" ", "").split("::=")
             cnt += 1
             if (lhs not in global_rule_dict):
@@ -448,6 +448,7 @@ class Parser:
     def read(self, text: str):
         tmp_indent = 0
         for token in text:
+            print(self.input)
             self.input += token
             if self.line_start and token == " ":
                 tmp_indent += 1
@@ -502,118 +503,317 @@ class Parser:
 
 grammar = Grammar.parse(
     """
-    $ ::= stmts+
-    function_definition ::= 'def' whitespaces variable '(' args? ')' ':' block
-    block::= NEWLINE INDENT stmts+ DEDENT | simple_stmts
-    simple_stmts ::= simple_stmt NEWLINE | NEWLINE
-    simple_stmt ::= expr_statement | break_statement | continue_statement | return_statement 
-    compound_stmt ::= if_statement | while_statement | for_statement | function_definition | else_statement
-    stmts ::= simple_stmts | compound_stmt
-    args ::= args ',' variable | variable
-    Float ::= Int '.' Int 
-    Int ::= DIGIT+
-    Array ::= expr? '[' expr? ']' | '[' in_args ']'
-    Dict ::= '{' key_values? '}'
-    key_values ::= key_values ',' expr ':' expr | expr ':' expr
-    String ::= "\"" chars? "\" | '\'' chars? '\''
-    expr_statement ::= expr 
-    if_statement ::= 'if' whitespaces expr ':' block
-    else_statement ::= 'else' ':' block
-    while_statement ::= 'while' whitespaces expr ':' block
-    for_statement ::= 'for' whitespaces variable whitespaces 'in' whitespaces expr ':' block
-    break_statement ::= 'break'
-    continue_statement ::= 'continue'
-    return_statement ::= 'return' whitespaces expr  | 'return'
-    assign_op ::= '=' | '+=' | '-=' | '*=' | '/=' | '%=' | '&=' | '^=' | '<<=' | '>>=' | '**=' | OR_FLAG '=' | '//='
-    expr_binary_op ::= '+' | '-' | '*' | '/' | '%' | '&' | '^' | '<<' | '>>' | '**' | '==' | '!=' | '<' | '>' | '<=' | '>=' | 'and' | 'or' | OR_FLAG | '//' | 'is' | 'in'
-    expr_unary_op ::= '+' | '-' | '~' | 'not'
-    in_args ::= in_args ',' expr | expr
-    func_call ::= variable '(' in_args? ')'
-    expr ::=  whitespaces? expr_raw whitespaces?
-    expr_raw ::= Int | Float | String | Bool | variable | func_call | expr expr_binary_op expr | expr_unary_op expr | '(' expr ')' | expr assign_op expr | Array | expr '.' expr | expr ',' expr | Dict
-    variable ::= whitespaces? variable_raw whitespaces? 
-    variable_raw ::= variable_char | variable_raw variable_char | variable_raw DIGIT
-    variable_char ::= VARIABLE_FLAG
-    chars ::= EVERYTHING | chars EVERYTHING | chars escaped | escaped
-    escaped ::= '\\\\' | '\\"'  | '\\n'  | '\\b'  | '\\f'  | '\\r' | '\\t' 
-    Bool ::= 'True' | 'False'
-    whitespaces ::= WHITE_SPACE_FLAG+
+$ ::= file
+whitespaces ::= WHITE_SPACE_FLAG+
+file ::= statements? ENDMARKER 
+interactive ::= statement_newline 
+eval ::= expressions NEWLINE* ENDMARKER 
+func_type ::= '(' type_expressions? ')' '->' expression NEWLINE* ENDMARKER 
+statements ::= statement+ 
+statement ::= compound_stmt  | simple_stmts 
+statement_newline ::= compound_stmt NEWLINE | simple_stmts | NEWLINE | ENDMARKER 
+sep_simle_stmt ::= ';' simple_stmt
+simple_stmts ::= simple_stmt sep_simle_stmt* ';'? NEWLINE 
+simple_stmt ::= assignment | type_alias | star_expressions | return_stmt | import_stmt | raise_stmt
+simple_stmt ::= 'pass' | del_stmt | yield_stmt | assert_stmt | 'break'  | 'continue'  | global_stmt | nonlocal_stmt
+compound_stmt ::= function_def | if_stmt | class_def | with_stmt | for_stmt | try_stmt | while_stmt | match_stmt
+=annotated_rhs ::= '=' annotated_rhs
+assignment ::= NAME ':' expression =annotated_rhs?
+assignment ::= '(' single_target ')' ':' expression =annotated_rhs? 
+assignment ::= single_subscript_attribute_target ':' expression =annotated_rhs?
+starexp_eq ::= star_targets '='
+assignment ::= starexp_eq+ yield_expr | starexp_eq+ star_expressions
+assignment ::= single_target augassign yield_expr | single_target augassign star_expressions 
+annotated_rhs ::= yield_expr | star_expressions
+augassign ::= '+=' | '-=' | '*=' | '@=' | '/=' | '%=' | '&=' | OR_FLAG '=' | '^=' | '<<=' | '>>=' | '**=' | '//=' 
+return_stmt ::= 'return' star_expressions?
+raise_stmt ::= 'raise' expression 'from' expression | 'raise' | 'raise' expression
+del_stmt ::= 'del' del_targets  
+comma_name ::= ',' NAME
+global_stmt ::= 'global' NAME comma_name*
+nonlocal_stmt ::= 'nonlocal' NAME comma_name*
+yield_stmt ::= yield_expr 
+assert_stmt ::= 'assert' expression ',' expression | 'assert' expression
+import_stmt ::= import_name | import_from
+import_name ::= 'import' dotted_as_names 
+dot_or_three_dots ::= '.' | '...'
+import_from ::= 'from' dot_or_three_dots* dotted_name 'import' import_from_targets 
+import_from ::= 'from' dot_or_three_dots+ 'import' import_from_targets 
+import_from_targets ::= '(' import_from_as_names ','? ')'  | '*' 
+import_from_targets ::= import_from_as_names
+comma_as_name ::= ',' import_from_as_name
+import_from_as_names ::= import_from_as_name comma_as_name*
+import_from_as_name ::= NAME 'as' NAME | NAME
+comma_dotted_as_name ::= ',' dotted_as_name
+dotted_as_names ::= dotted_as_name comma_dotted_as_name*
+as_name ::= 'as' NAME
+dotted_as_name ::= dotted_name as_name?
+dotted_name ::= dotted_name '.' NAME | NAME
+block ::= NEWLINE INDENT statements DEDENT | simple_stmts
+decorator_inner ::= '@' named_expression NEWLINE
+decorators ::= decorator_inner+
+class_def ::= decorators? class_def_raw 
+param_arguments ::= '(' arguments? ')'
+class_def_raw ::= 'class' NAME type_params? param_arguments? ':' block 
+function_def ::= decorators? function_def_raw 
+arrow_exp ::= '->' expression
+function_def_raw ::= 'def' NAME type_params? '(' params? ')' arrow_exp? ':' func_type_comment? block 
+function_def_raw ::= 'async' whitespaces 'def' NAME type_params? '(' params? ')' arrow_exp?  ':' func_type_comment? block 
+params ::= parameters
+parameters ::= slash_no_default param_no_default* param_with_default* star_etc? | slash_with_default param_with_default* star_etc? 
+parameters ::= param_no_default+ param_with_default* star_etc? | param_with_default+ star_etc? | star_etc 
+slash_no_default ::= param_no_default+ '/' ',' 
+slash_no_default ::= param_no_default+ '/'
+slash_with_default ::= param_no_default* param_with_default+ '/' ',' 
+slash_with_default ::=  param_no_default* param_with_default+ '/'
+star_etc ::= '*' param_no_default param_maybe_default* kwds? | '*' param_no_default_star_annotation param_maybe_default* kwds? 
+star_etc ::= '*' ',' param_maybe_default+ kwds? | kwds 
+kwds ::= | '**' param_no_default 
+param_no_default ::= param ',' TYPE_COMMENT? 
+param_no_default ::= param TYPE_COMMENT?
+param_no_default_star_annotation ::= param_star_annotation ',' TYPE_COMMENT?  
+param_no_default_star_annotation ::= param_star_annotation TYPE_COMMENT?
+param_with_default ::= param default ',' TYPE_COMMENT? 
+param_with_default ::= param default TYPE_COMMENT?
+param_maybe_default ::= param default? ',' TYPE_COMMENT? 
+param_maybe_default ::= param default? TYPE_COMMENT? 
+param ::= NAME annotation? 
+param_star_annotation ::= NAME star_annotation 
+annotation ::= ':' expression 
+star_annotation ::= ':' star_expression 
+default ::= '=' expression 
+if_stmt ::= 'if' named_expression ':' block elif_stmt | 'if' named_expression ':' block else_block?
+elif_stmt ::= 'elif' named_expression ':' block elif_stmt | 'elif' named_expression ':' block else_block? 
+else_block ::= 'else' ':' block 
+while_stmt ::= 'while' named_expression ':' block else_block? 
+for_stmt ::= 'for' star_targets 'in'  star_expressions ':' TYPE_COMMENT? block else_block? 
+for_stmt ::= 'async' whitespaces 'for' star_targets 'in'  star_expressions ':' TYPE_COMMENT? block else_block? 
+comma_with_item ::= ',' with_item
+with_inner ::= with_item comma_with_item*
+with_stmt ::= 'with' '(' with_inner ','? ')' ':' TYPE_COMMENT? block | 'with' with_inner ':' TYPE_COMMENT? block 
+with_stmt ::= 'async' whitespaces 'with' '(' with_inner ','? ')' ':' block | 'async' whitespaces 'with' with_item comma_with_item* ':' TYPE_COMMENT? block 
+with_item ::= expression 'as' star_target | expression 
+try_stmt ::= 'try' ':' block finally_block | 'try' ':' block except_block+ else_block? finally_block? 
+try_stmt ::= 'try' ':' block except_star_block+ else_block? finally_block?
+except_block ::= 'except' expression as_name? ':' block | 'except' ':' block 
+except_star_block ::= 'except' '*' expression as_name? ':' block 
+finally_block ::= 'finally' ':' block 
+match_stmt ::= 'match' subject_expr ':' NEWLINE INDENT case_block+ DEDENT 
+subject_expr ::= star_named_expression ',' star_named_expressions? | named_expression
+case_block ::= 'case' patterns guard? ':' block 
+guard ::= 'if' named_expression 
+patterns ::= open_sequence_pattern | pattern
+pattern ::= as_pattern | or_pattern
+as_pattern ::= or_pattern 'as' pattern_capture_target 
+OR_closed_pattern ::= OR_FLAG closed_pattern
+or_pattern ::= closed_pattern OR_closed_pattern*
+closed_pattern ::= literal_pattern | capture_pattern | wildcard_pattern
+closed_pattern ::= value_pattern | group_pattern | sequence_pattern | mapping_pattern | class_pattern
+literal_pattern ::= signed_number  | complex_number | strings | 'None' | 'True' | 'False' 
+literal_expr ::= signed_number | complex_number | strings | 'None' | 'True' | 'False' 
+complex_number ::= signed_real_number '+' imaginary_number | signed_real_number '-' imaginary_number  
+signed_number ::= NUMBER |'-' NUMBER 
+signed_real_number ::= real_number | '-' real_number 
+real_number ::= NUMBER 
+imaginary_number ::= NUMBER 
+capture_pattern ::= pattern_capture_target 
+pattern_capture_target ::= EPSILON
+wildcard_pattern ::= | "_" 
+value_pattern ::= attr
+attr ::= name_or_attr '.' NAME 
+name_or_attr ::= attr | NAME
+group_pattern ::= '(' pattern ')' 
+sequence_pattern ::= '[' maybe_sequence_pattern? ']' | '(' open_sequence_pattern? ')' 
+open_sequence_pattern ::= maybe_star_pattern ',' maybe_sequence_pattern? 
+comma_maybe_star_pattern ::= maybe_star_pattern ','
+maybe_sequence_pattern ::= maybe_star_pattern comma_maybe_star_pattern* ','? 
+maybe_star_pattern ::= star_pattern | pattern
+star_pattern ::= '*' pattern_capture_target | '*' wildcard_pattern 
+mapping_pattern ::= '{' '}' | '{' double_star_pattern ','? '}' 
+mapping_pattern ::= '{' items_pattern ',' double_star_pattern ','? '}' | '{' items_pattern ','? '}' 
+comma_kv_pattern ::= ',' key_value_pattern
+items_pattern ::= key_value_pattern comma_kv_pattern*
+key_value_pattern ::= literal_expr ':' pattern | attr ':' pattern 
+double_star_pattern ::= '**' pattern_capture_target 
+class_pattern ::= name_or_attr '(' ')' | name_or_attr '(' positional_patterns ','? ')' 
+class_pattern ::= name_or_attr '(' keyword_patterns ','? ')' | name_or_attr '(' positional_patterns ',' keyword_patterns ','? ')' 
+comma_pattern ::= ',' pattern
+positional_patterns ::= pattern comma_pattern*
+comma_keyword_pattern ::= ',' keyword_pattern
+keyword_patterns ::= keyword_pattern comma_keyword_pattern*
+keyword_pattern ::= NAME '=' pattern 
+type_alias ::= 'type' NAME type_params? '=' expression 
+type_params ::=  '[' type_param_seq ']' 
+comma_type_param ::= ',' type_param
+type_param_seq ::= type_param comma_type_param* ','? 
+type_param ::= NAME type_param_bound? type_param_default?
+type_param ::= '*' NAME type_param_starred_default? 
+type_param ::= '**' NAME type_param_default?
+type_param_bound ::= ':' expression 
+type_param_default ::= '=' expression 
+type_param_starred_default ::= '=' star_expression 
+comma_exp ::= ',' expression
+expressions ::= expression comma_exp+ ','? | expression ',' | expression
+expression ::= disjunction 'if' disjunction 'else' expression | disjunction | lambdef
+yield_expr ::= 'yield' whitespaces 'from' expression | 'yield' star_expressions? 
+comma_star_exp ::= ',' star_expression
+star_expressions ::= star_expression comma_star_exp+ ','? | star_expression ',' | star_expression
+star_expression ::= '*' bitwise_or | expression
+comma_star_named_exp ::= ',' star_named_expression
+star_named_expressions ::= star_named_expression comma_star_exp* ','? 
+star_named_expression ::= '*' bitwise_or | named_expression
+assignment_expression ::= NAME ':=' expression 
+named_expression ::= assignment_expression | expression
+or_conjunction ::= 'or' conjunction
+disjunction ::= conjunction or_conjunction* 
+and_inversion ::= 'and' inversion
+conjunction ::= inversion and_inversion* 
+inversion ::= 'not' inversion | comparison
+comparison ::= bitwise_or compare_op_bitwise_or_pair+ | bitwise_or
+compare_op_bitwise_or_pair ::= eq_bitwise_or | noteq_bitwise_or | lte_bitwise_or
+compare_op_bitwise_or_pair ::= lt_bitwise_or | gte_bitwise_or | gt_bitwise_or
+compare_op_bitwise_or_pair ::= notin_bitwise_or | in_bitwise_or | isnot_bitwise_or | is_bitwise_or
+eq_bitwise_or ::= '==' bitwise_or 
+noteq_bitwise_or ::= '!='  bitwise_or 
+lte_bitwise_or ::= '<=' bitwise_or 
+lt_bitwise_or ::= '<' bitwise_or 
+gte_bitwise_or ::= '>=' bitwise_or 
+gt_bitwise_or ::= '>' bitwise_or 
+notin_bitwise_or ::= 'not' 'in' bitwise_or 
+in_bitwise_or ::= 'in' bitwise_or 
+isnot_bitwise_or ::= 'is' 'not' bitwise_or 
+is_bitwise_or ::= 'is' bitwise_or 
+bitwise_or ::= bitwise_or OR_FLAG bitwise_xor | bitwise_xor
+bitwise_xor ::= bitwise_xor '^' bitwise_and | bitwise_and
+bitwise_and ::= bitwise_and '&' shift_expr | shift_expr
+shift_expr ::= shift_expr '<<' sum | shift_expr '>>' sum | sum
+sum ::= sum '+' term | sum '-' term | term
+term ::= term '*' factor | term '/' factor | term '//' factor | term '%' factor 
+term ::= term '@' factor | factor
+factor ::= '+' factor | '-' factor | '~' factor | power
+power ::= await_primary '**' factor | await_primary
+await_primary ::= 'await' primary | primary
+primary ::= primary '.' NAME | primary genexp | primary '(' arguments? ')' 
+primary ::= primary '[' slices ']' | atom
+comma_slice_or_stared_exp ::= ',' slice | ',' starred_expression
+slices ::=  slice | comma_slice_or_stared_exp+ ','? 
+slice ::= expression? ':' expression? | named_expression | expression? ':' expression? ':' expression?
+atom ::= NAME | 'True' | 'False' | 'None' | strings | NUMBER | tuple | group | genexp
+atom ::= list | listcomp | dict | set | dictcomp | setcomp | '...' 
+group ::= '(' yield_expr ')' | '(' named_expression ')' 
+lambdef ::= 'lambda' lambda_params? ':' expression 
+lambda_params ::= lambda_parameters
+lambda_parameters ::= lambda_slash_no_default lambda_param_no_default* lambda_param_with_default* lambda_star_etc? 
+lambda_parameters ::= lambda_slash_with_default lambda_param_with_default* lambda_star_etc? 
+lambda_parameters ::= lambda_param_no_default+ lambda_param_with_default* lambda_star_etc? 
+lambda_parameters ::= lambda_param_with_default+ lambda_star_etc? | lambda_star_etc 
+lambda_slash_no_default ::= lambda_param_no_default+ '/' ',' | lambda_param_no_default+ '/'
+lambda_slash_with_default ::= lambda_param_no_default* lambda_param_with_default+ '/' ',' 
+lambda_slash_with_default ::= lambda_param_no_default* lambda_param_with_default+ '/'
+lambda_star_etc ::= '*' lambda_param_no_default lambda_param_maybe_default* lambda_kwds?
+lambda_star_etc ::= '*' ',' lambda_param_maybe_default+ lambda_kwds? | lambda_kwds 
+lambda_kwds ::= '**' lambda_param_no_default 
+lambda_param_no_default ::= lambda_param ','? 
+lambda_param_with_default ::= lambda_param default ','? 
+lambda_param_maybe_default ::= lambda_param default? ','?
+lambda_param ::= NAME 
+fstring_middle ::= fstring_replacement_field | FSTRING_MIDDLE 
+fstring_replacement_field ::= '{' annotated_rhs '='? fstring_conversion? fstring_full_format_spec '}' 
+fstring_conversion ::= '!' NAME 
+fstring_full_format_spec ::= ':' fstring_format_spec* 
+fstring_format_spec ::= FSTRING_MIDDLE | fstring_replacement_field
+fstring ::= FSTRING_START fstring_middle* FSTRING_END 
+string ::= STRING 
+fstring_or_string ::= fstring | string
+strings ::= fstring_or_string+ 
+list ::= '[' star_named_expressions? ']' 
+tuple_inner ::= star_named_expression ',' star_named_expression?
+tuple ::= '(' tuple_inner? ')' 
+set ::= '{' star_named_expressions '}' 
+dict ::= '{' double_starred_kvpairs? '}'
+comma_double_starred_kvpair ::= ',' double_starred_kvpair 
+double_starred_kvpairs ::= double_starred_kvpair comma_double_starred_kvpair? ','? 
+double_starred_kvpair ::= '**' bitwise_or | kvpair
+kvpair ::= expression ':' expression 
+for_if_clauses ::= for_if_clause+ 
+if_disjunction ::= 'if' whitespaces disjunction
+for_if_clause ::= 'async' whitespaces 'for' whitespaces star_targets whitespaces 'in' whitespaces disjunction if_disjunction* 
+for_if_clause ::= 'for' whitespaces star_targets whitespaces 'in' whitespaces disjunction if_disjunction* 
+listcomp ::= '[' named_expression for_if_clauses ']' 
+setcomp ::= '{' named_expression for_if_clauses '}' 
+genexp ::= '(' assignment_expression for_if_clauses ')' 
+genexp ::= '(' expression for_if_clauses ')' 
+dictcomp ::= '{' kvpair for_if_clauses '}' 
+arguments ::= args ','?
+stared_exp_or_assign_exp_or_exp ::= starred_expression | assignment_expression | expression
+comma_sae ::= ',' stared_exp_or_assign_exp_or_exp 
+comma_kwargs ::= ',' kwargs
+args ::= stared_exp_or_assign_exp_or_exp comma_sae* comma_kwargs | kwargs 
+comma_kwarg_or_starred ::= ',' kwarg_or_starred
+comma_kwarg_or_double_starred ::= ',' kwarg_or_double_starred
+kwargs ::= kwarg_or_starred comma_kwarg_or_starred* kwarg_or_double_starred comma_kwarg_or_double_starred*
+kwargs ::= kwarg_or_starred comma_kwarg_or_starred* | kwarg_or_double_starred comma_kwarg_or_double_starred*
+starred_expression ::= '*' expression 
+kwarg_or_starred ::= NAME '=' expression | starred_expression 
+kwarg_or_double_starred ::= NAME '=' expression | '**' expression
+comma_star_target ::= ',' star_target 
+star_targets ::= star_target comma_star_target* ','? 
+star_targets_list_seq ::= star_target comma_star_target* ','? 
+star_targets_tuple_seq ::= star_target comma_star_target+ ','? | star_target ',' 
+star_target ::= '*' star_target | target_with_star_atom
+target_with_star_atom ::= t_primary '.' NAME | t_primary '[' slices ']' | star_atom
+star_atom ::= NAME | '(' target_with_star_atom ')' | '(' star_targets_tuple_seq? ')' 
+star_atom ::= '[' star_targets_list_seq? ']' 
+single_target ::= single_subscript_attribute_target | NAME | '(' single_target ')' 
+single_subscript_attribute_target ::= t_primary '.' NAME | t_primary '[' slices ']' 
+t_primary ::= t_primary '.' NAME | t_primary '[' slices ']' | t_primary genexp 
+t_primary ::= t_primary '(' arguments? ')' | atom
+t_lookahead ::= '(' | '[' | '.'
+comma_del_target ::= ',' del_target
+del_targets ::= del_target comma_del_target* ','?
+del_target ::= t_primary '.' NAME | t_primary '[' slices ']' | del_t_atom
+del_t_atom ::= NAME | '(' del_target ')' | '(' del_targets? ')' | '[' del_targets? ']' 
+type_expressions::= expression comma_exp* ',' '*' expression ',' '**' expression 
+type_expressions::= expression comma_exp* ',' '*' expression 
+type_expressions::= expression comma_exp* ',' '**' expression 
+type_expressions::='*' expression ',' '**' expression 
+type_expressions::= '*' expression 
+type_expressions::= '**' expression 
+type_expressions::= expression comma_exp*
+func_type_comment ::= NEWLINE TYPE_COMMENT | TYPE_COMMENT
+NAME ::= NAME VARIABLE_FLAG | NAME DIGIT | VARIABLE_FLAG
+TYPE_COMMENT ::= '#' EVERYTHING+
+NUMBER ::= INT | FLOAT
+INT ::= DIGIT+
+FLOAT ::= INT '.' INT
+FSTRING_MIDDLE ::= EVERYTHING
+FSTRING_START ::= 'f"' | 'f'''
+FSTRING_END ::= '"' | '''
+STRING ::= '"' chars '"'
+chars ::= EVERYTHING | chars EVERYTHING | chars escaped | escaped
+escaped ::= '\\\\' | '\\"'  | '\\n'  | '\\b'  | '\\f'  | '\\r' | '\\t' 
     """
 )
 # assert(False)
 now_time = time.time()
 Parser(grammar).read(
     """
-def initialize_graph(vertices):
-    graph = {}
-    i = 1
-    while i <= vertices:
-        graph[i] = {}
-        i = i + 1
-    return graph
+def count_even_numbers(limit):
+    count = 0
+    number += 1
+    while number <= limit:
+        if number % 2 == 0:
+            count = count + 1
+        number = number + 1
+            return count
 
-def add_edge(graph, u, v, capacity):
-    if u in graph:
-        graph[u][v] = capacity
-    if v in graph:
-        graph[v][u] = 0
+limit = 10
+result = count_even_numbers(limit)
 
-def bfs(graph, source, sink, parent, vertices):
-    visited = {}
-    i = 1
-    while i <= vertices:
-        visited[i] = False
-        i = i + 1
-    queue = [source]
-    visited[source] = True
-    while len(queue) > 0:
-        current = queue.pop(0)
-        for neighbor in graph[current]:
-            if not visited[neighbor] and graph[current][neighbor] > 0:
-                queue.append(neighbor)
-                visited[neighbor] = True
-                parent[neighbor] = current
-                if neighbor == sink:
-                    return True
-    return False
-
-def edmonds_karp(graph, source, sink, vertices):
-    parent = {}
-    max_flow = 0
-    while bfs(graph, source, sink, parent, vertices):
-        path_flow = float('inf')
-        current = sink
-        while current != source:
-            path_flow = min(path_flow, graph[parent[current]][current])
-            current = parent[current]
-        max_flow = max_flow + path_flow
-        current = sink
-        while current != source:
-            prev = parent[current]
-            graph[prev][current] = graph[prev][current] - path_flow
-            graph[current][prev] = graph[current][prev] + path_flow
-            current = prev
-    return max_flow
-
-vertices = 6
-graph = initialize_graph(vertices)
-add_edge(graph, 1, 2, 16)
-add_edge(graph, 1, 3, 13)
-add_edge(graph, 2, 3, 10)
-add_edge(graph, 2, 4, 12)
-add_edge(graph, 3, 2, 4)
-add_edge(graph, 3, 5, 14)
-add_edge(graph, 4, 3, 9)
-add_edge(graph, 4, 6, 20)
-add_edge(graph, 5, 4, 7)
-add_edge(graph, 5, 6, 4)
-source = 1
-sink = 6
-max_flow = edmonds_karp(graph, source, sink, vertices)
-if max_flow > 0:
-    print("The maximum possible flow is", max_flow)
+if result > 0:
+    print("There are",result, "even numbers.")
 else:
-    print("No flow is possible from source to sink")
+    print("No even numbers found.")
     """
 )
 print("The time is", time.time() - now_time, "s.")

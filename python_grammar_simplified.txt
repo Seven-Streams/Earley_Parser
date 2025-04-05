@@ -6,7 +6,8 @@ func_type ::= '(' type_expressions? ')' '->' expression NEWLINE* ENDMARKER
 statements ::= statement+ 
 statement ::= compound_stmt  | simple_stmts 
 statement_newline ::= compound_stmt NEWLINE | simple_stmts | NEWLINE | ENDMARKER 
-simple_stmts ::= ';'.simple_stmt+ ';'? NEWLINE 
+sep_simle_stmt ::= ';' simple_stmt
+simple_stmts ::= simple_stmt sep_simle_stmt* ';'? NEWLINE 
 simple_stmt ::= assignment | type_alias | star_expressions | return_stmt | import_stmt | raise_stmt
 simple_stmt ::= 'pass' | del_stmt | yield_stmt | assert_stmt | 'break'  | 'continue'  | global_stmt | nonlocal_stmt
 compound_stmt ::= function_def | if_stmt | class_def | with_stmt | for_stmt | try_stmt | while_stmt | match_stmt
@@ -46,12 +47,12 @@ block ::= NEWLINE INDENT statements DEDENT | simple_stmts
 decorator_inner ::= '@' named_expression NEWLINE
 decorators ::= decorator_inner+
 class_def ::= decorators? class_def_raw 
-param_arguments ::= '(' [arguments] ')'
+param_arguments ::= '(' arguments? ')'
 class_def_raw ::= 'class' NAME type_params? param_arguments? ':' block 
 function_def ::= decorators? function_def_raw 
 arrow_exp ::= '->' expression
-function_def_raw ::= 'def' NAME [type_params] '(' params? ')' arrow_exp? ':' func_type_comment? block 
-function_def_raw ::= 'async' whitespaces 'def' NAME [type_params] '(' params? ')' arrow_exp?  ':' func_type_comment? block 
+function_def_raw ::= 'def' NAME type_params? '(' params? ')' arrow_exp? ':' func_type_comment? block 
+function_def_raw ::= 'async' whitespaces 'def' NAME type_params? '(' params? ')' arrow_exp?  ':' func_type_comment? block 
 params ::= parameters
 parameters ::= slash_no_default param_no_default* param_with_default* star_etc? | slash_with_default param_with_default* star_etc? 
 parameters ::= param_no_default+ param_with_default* star_etc? | param_with_default+ star_etc? | star_etc 
@@ -84,7 +85,7 @@ for_stmt ::= 'async' whitespaces 'for' star_targets 'in'  star_expressions ':' T
 comma_with_item ::= ',' with_item
 with_inner ::= with_item comma_with_item*
 with_stmt ::= 'with' '(' with_inner ','? ')' ':' TYPE_COMMENT? block | 'with' with_inner ':' TYPE_COMMENT? block 
-with_stmt ::= 'async' whitespaces 'with' '(' with_inner ','? ')' ':' block | 'async' whitespaces 'with' ','.with_item+ ':' TYPE_COMMENT? block 
+with_stmt ::= 'async' whitespaces 'with' '(' with_inner ','? ')' ':' block | 'async' whitespaces 'with' with_item comma_with_item* ':' TYPE_COMMENT? block 
 with_item ::= expression 'as' star_target | expression 
 try_stmt ::= 'try' ':' block finally_block | 'try' ':' block except_block+ else_block? finally_block? 
 try_stmt ::= 'try' ':' block except_star_block+ else_block? finally_block?
@@ -94,10 +95,10 @@ finally_block ::= 'finally' ':' block
 match_stmt ::= 'match' subject_expr ':' NEWLINE INDENT case_block+ DEDENT 
 subject_expr ::= star_named_expression ',' star_named_expressions? | named_expression
 case_block ::= 'case' patterns guard? ':' block 
-guard: 'if' named_expression 
+guard ::= 'if' named_expression 
 patterns ::= open_sequence_pattern | pattern
 pattern ::= as_pattern | or_pattern
-as_pattern: or_pattern 'as' pattern_capture_target 
+as_pattern ::=  or_pattern 'as' pattern_capture_target 
 OR_closed_pattern ::= OR_FLAG closed_pattern
 or_pattern ::= closed_pattern OR_closed_pattern*
 closed_pattern ::= literal_pattern | capture_pattern | wildcard_pattern
@@ -136,7 +137,7 @@ comma_keyword_pattern ::= ',' keyword_pattern
 keyword_patterns ::= keyword_pattern comma_keyword_pattern*
 keyword_pattern ::= NAME '=' pattern 
 type_alias ::= 'type' NAME type_params? '=' expression 
-type_params ::= invalid_type_params | '[' type_param_seq ']' 
+type_params ::= '[' type_param_seq ']' 
 comma_type_param ::= ',' type_param
 type_param_seq ::= type_param comma_type_param* ','? 
 type_param ::= NAME type_param_bound? type_param_default?
@@ -148,7 +149,7 @@ type_param_starred_default ::= '=' star_expression
 comma_exp ::= ',' expression
 expressions ::= expression comma_exp+ ','? | expression ',' | expression
 expression ::= disjunction 'if' disjunction 'else' expression | disjunction | lambdef
-yield_expr ::= 'yield' whitespaces 'from' expression | 'yield' [star_expressions] 
+yield_expr ::= 'yield' whitespaces 'from' expression | 'yield' star_expressions? 
 comma_star_exp ::= ',' star_expression
 star_expressions ::= star_expression comma_star_exp+ ','? | star_expression ',' | star_expression
 star_expression ::= '*' bitwise_or | expression
@@ -200,7 +201,7 @@ lambda_parameters ::= lambda_slash_no_default lambda_param_no_default* lambda_pa
 lambda_parameters ::= lambda_slash_with_default lambda_param_with_default* lambda_star_etc? 
 lambda_parameters ::= lambda_param_no_default+ lambda_param_with_default* lambda_star_etc? 
 lambda_parameters ::= lambda_param_with_default+ lambda_star_etc? | lambda_star_etc 
-lambda_slash_no_default ::= lambda_param_no_default+ '/' ',' | lambda_param_no_default+ '/' &':' 
+lambda_slash_no_default ::= lambda_param_no_default+ '/' ',' | lambda_param_no_default+ '/' 
 lambda_slash_with_default ::= lambda_param_no_default* lambda_param_with_default+ '/' ',' 
 lambda_slash_with_default ::= lambda_param_no_default* lambda_param_with_default+ '/'
 lambda_star_etc ::= '*' lambda_param_no_default lambda_param_maybe_default* lambda_kwds?
@@ -209,7 +210,7 @@ lambda_kwds ::= '**' lambda_param_no_default
 lambda_param_no_default ::= lambda_param ','? 
 lambda_param_with_default ::= lambda_param default ','? 
 lambda_param_maybe_default ::= lambda_param default? ','?
-lambda_param: NAME 
+lambda_param ::= NAME 
 fstring_middle ::= fstring_replacement_field | FSTRING_MIDDLE 
 fstring_replacement_field ::= '{' annotated_rhs '='? fstring_conversion? fstring_full_format_spec '}' 
 fstring_conversion ::= '!' NAME 
@@ -251,7 +252,7 @@ kwarg_or_starred ::= NAME '=' expression | starred_expression
 kwarg_or_double_starred ::= NAME '=' expression | '**' expression
 comma_star_target ::= ',' star_target 
 star_targets ::= star_target comma_star_target* ','? 
-star_targets_list_seq: star_target comma_star_target* ','? 
+star_targets_list_seq ::= star_target comma_star_target* ','? 
 star_targets_tuple_seq ::= star_target comma_star_target+ ','? | star_target ',' 
 star_target ::= '*' star_target | target_with_star_atom
 target_with_star_atom ::= t_primary '.' NAME | t_primary '[' slices ']' | star_atom
@@ -265,8 +266,8 @@ t_lookahead ::= '(' | '[' | '.'
 comma_del_target ::= ',' del_target
 del_targets ::= del_target comma_del_target* ','?
 del_target ::= t_primary '.' NAME | t_primary '[' slices ']' | del_t_atom
-del_t_atom ::= NAME | '(' del_target ')' | '(' del_targets? ')' | '[' [del_targets] ']' 
-type_expressions::= ','.expression+ ',' '*' expression ',' '**' expression 
+del_t_atom ::= NAME | '(' del_target ')' | '(' del_targets? ')' | '[' del_targets? ']' 
+type_expressions::= expression comma_exp* ',' '*' expression ',' '**' expression 
 type_expressions::= expression comma_exp* ',' '*' expression 
 type_expressions::= expression comma_exp* ',' '**' expression 
 type_expressions::='*' expression ',' '**' expression 
