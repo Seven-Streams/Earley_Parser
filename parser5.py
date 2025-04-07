@@ -3,6 +3,7 @@ from typing import List, Set, Tuple, Union, Dict
 import time
 
 global_rule_dict: dict[str, int] = {}
+global_rule_dict_reversed: dict[int, str] = {}
 ROOT_RULE= "$"
 root_rule_number = 0
 INDENT_WB_NUMBER = 4
@@ -21,7 +22,6 @@ DEDENT = "DEDENT"
 ENDMARKER = "ENDMARKER"
 
 
-global_rule_dict = {}
 
 def is_terminal(symbol: Union[str, int]) -> bool:
     return isinstance(symbol, str)
@@ -74,12 +74,10 @@ class NFA:
                 if(symbol[len(symbol) - 1] == "?"):
                     question_signal = True
                     symbol = symbol[0:len(symbol) - 1]
-                if(symbol[0] == '\'' and symbol[len(symbol) - 1] == '\''):
+                if((symbol[0] == '\'' and symbol[len(symbol) - 1] == '\'')
+                or (symbol[0] == '"' and symbol[len(symbol) - 1] == '"')):
                     quotation_signal = True
-                    symbol = symbol[1:len(symbol) - 1]
-                if(symbol[0] == '"' and symbol[len(symbol) - 1] == '"'):
-                    quotation_signal = True
-                    symbol = symbol[1:len(symbol) - 1]              
+                    symbol = symbol[1:len(symbol) - 1]           
                 if(self.transitions.get(current) == None):
                     self.transitions[current] = set()
                 rule_symbol_list = []
@@ -296,8 +294,10 @@ class Grammar:
             if (lhs not in global_rule_dict):
                 if lhs == ROOT_RULE:
                     global_rule_dict[lhs] = root_rule_number
+                    global_rule_dict_reversed[root_rule_number] = lhs
                 else:
                     global_rule_dict[lhs] = cnt
+                    global_rule_dict_reversed[cnt] = lhs
             if(global_rule_dict[lhs] not in NFAs_tmp):
                 NFAs_tmp[global_rule_dict[lhs]] = NFA(global_rule_dict[lhs])
         # Do the second scanning. Replace the non-terminal symbols with the corresponding number.
@@ -325,6 +325,8 @@ class State:
         return f"State({self.rule_name}, {self.node_num}, {self.pos}, {self.accepted})"
     def __hash__(self):
         return hash((self.rule_name, self.node_num, self.pos, self.accepted))
+    def __repr__(self):
+       return f"[State: rule_name={global_rule_dict_reversed[self.rule_name]}, node_num={self.node_num}, pos={self.pos}, accepted={self.accepted}]"
 
 @dataclass
 class Parser:
@@ -408,7 +410,7 @@ class Parser:
                     # print(EPSILON, State(state.rule_name, trans[1], state.pos, self.GetAccepted(state.rule_name, trans[1])))
                     self.queue.append(State(state.rule_name, trans[1], state.pos, self.GetAccepted(state.rule_name, trans[1])))
                 if ((trans[0] == token) 
-                    or (trans[0] == XGRAMMAR_EVERYTHING_FLAG and token != "\\")
+                    or (trans[0] == XGRAMMAR_EVERYTHING_FLAG and token != "\\" and token != "\n" and token != "INDENT" and token != "DEDENT")
                     or (trans[0] == XGRAMMAR_DIGIT_FLAG and token.isdigit())
                     or (trans[0] == XGRAMMAR_HEX_FLAG and token in "0123456789abcdefABCDEF")
                     or (trans[0] == WHITE_SPACE_FLAG and token == " ")
@@ -436,6 +438,7 @@ class Parser:
         self.current_states.clear()
         while self.queue:
             state = self.queue.pop(0)
+            # print(state)
             if state in self.current_states:
                 continue
             self.current_states.add(state)
@@ -443,12 +446,13 @@ class Parser:
                 self._complete(state)
             self._scan_predict(state, token)
         self.current_states = self.next_states
+        # print("__________")
         self.next_states = set()
     
     def read(self, text: str):
         tmp_indent = 0
         for token in text:
-            print(self.input)
+            # print(self.input)
             self.input += token
             if self.line_start and token == " ":
                 tmp_indent += 1
@@ -523,10 +527,10 @@ assignment ::= '(' single_target ')' ':' expression =annotated_rhs?
 assignment ::= single_subscript_attribute_target ':' expression =annotated_rhs?
 starexp_eq ::= star_targets '='
 assignment ::= starexp_eq+ yield_expr | starexp_eq+ star_expressions
-assignment ::= single_target augassign yield_expr | single_target augassign star_expressions 
+assignment ::= single_target whitespaces? augassign whitespaces? yield_expr | single_target whitespaces? augassign whitespaces? star_expressions 
 annotated_rhs ::= yield_expr | star_expressions
-augassign ::= '+=' | '-=' | '*=' | '@=' | '/=' | '%=' | '&=' | OR_FLAG '=' | '^=' | '<<=' | '>>=' | '**=' | '//=' 
-return_stmt ::= 'return' star_expressions?
+augassign ::= '=' | '+=' | '-=' | '*=' | '@=' | '/=' | '%=' | '&=' | OR_FLAG '=' | '^=' | '<<=' | '>>=' | '**=' | '//=' 
+return_stmt ::= 'return' whitespaces star_expressions? | 'return'
 raise_stmt ::= 'raise' expression 'from' expression | 'raise' | 'raise' expression
 del_stmt ::= 'del' del_targets  
 comma_name ::= ',' NAME
@@ -557,8 +561,8 @@ param_arguments ::= '(' arguments? ')'
 class_def_raw ::= 'class' NAME type_params? param_arguments? ':' block 
 function_def ::= decorators? function_def_raw 
 arrow_exp ::= '->' expression
-function_def_raw ::= 'def' NAME type_params? '(' params? ')' arrow_exp? ':' func_type_comment? block 
-function_def_raw ::= 'async' whitespaces 'def' NAME type_params? '(' params? ')' arrow_exp?  ':' func_type_comment? block 
+function_def_raw ::= 'def' whitespaces NAME type_params? '(' params? ')' arrow_exp? ':' func_type_comment? block 
+function_def_raw ::= 'async' whitespaces 'def' whitespaces NAME type_params? '(' params? ')' arrow_exp?  ':' func_type_comment? block 
 params ::= parameters
 parameters ::= slash_no_default param_no_default* param_with_default* star_etc? | slash_with_default param_with_default* star_etc? 
 parameters ::= param_no_default+ param_with_default* star_etc? | param_with_default+ star_etc? | star_etc 
@@ -569,8 +573,8 @@ slash_with_default ::=  param_no_default* param_with_default+ '/'
 star_etc ::= '*' param_no_default param_maybe_default* kwds? | '*' param_no_default_star_annotation param_maybe_default* kwds? 
 star_etc ::= '*' ',' param_maybe_default+ kwds? | kwds 
 kwds ::= | '**' param_no_default 
-param_no_default ::= param ',' TYPE_COMMENT? 
-param_no_default ::= param TYPE_COMMENT?
+param_no_default ::= whitespaces? param whitespaces? ',' TYPE_COMMENT? 
+param_no_default ::= whitespaces? param whitespaces? TYPE_COMMENT?
 param_no_default_star_annotation ::= param_star_annotation ',' TYPE_COMMENT?  
 param_no_default_star_annotation ::= param_star_annotation TYPE_COMMENT?
 param_with_default ::= param default ',' TYPE_COMMENT? 
@@ -582,12 +586,12 @@ param_star_annotation ::= NAME star_annotation
 annotation ::= ':' expression 
 star_annotation ::= ':' star_expression 
 default ::= '=' expression 
-if_stmt ::= 'if' named_expression ':' block elif_stmt | 'if' named_expression ':' block else_block?
+if_stmt ::= 'if' whitespaces named_expression whitespaces? ':' block elif_stmt | 'if' whitespaces named_expression whitespaces? ':' block else_block?
 elif_stmt ::= 'elif' named_expression ':' block elif_stmt | 'elif' named_expression ':' block else_block? 
 else_block ::= 'else' ':' block 
-while_stmt ::= 'while' named_expression ':' block else_block? 
-for_stmt ::= 'for' star_targets 'in'  star_expressions ':' TYPE_COMMENT? block else_block? 
-for_stmt ::= 'async' whitespaces 'for' star_targets 'in'  star_expressions ':' TYPE_COMMENT? block else_block? 
+while_stmt ::= 'while' whitespaces named_expression whitespaces? ':' block else_block? 
+for_stmt ::= 'for' whitespaces star_targets whitespaces 'in' whitespaces star_expressions whitespaces? ':' TYPE_COMMENT? block else_block? 
+for_stmt ::= 'async' whitespaces 'for' whitespaces star_targets whitespaces 'in' whitespaces star_expressions whitespaces? ':' TYPE_COMMENT? block else_block? 
 comma_with_item ::= ',' with_item
 with_inner ::= with_item comma_with_item*
 with_stmt ::= 'with' '(' with_inner ','? ')' ':' TYPE_COMMENT? block | 'with' with_inner ':' TYPE_COMMENT? block 
@@ -654,7 +658,7 @@ type_param_default ::= '=' expression
 type_param_starred_default ::= '=' star_expression 
 comma_exp ::= ',' expression
 expressions ::= expression comma_exp+ ','? | expression ',' | expression
-expression ::= disjunction 'if' disjunction 'else' expression | disjunction | lambdef
+expression ::= disjunction whitespaces 'if' whitespaces disjunction whitespaces 'else' whitespaces expression | disjunction | lambdef
 yield_expr ::= 'yield' whitespaces 'from' expression | 'yield' star_expressions? 
 comma_star_exp ::= ',' star_expression
 star_expressions ::= star_expression comma_star_exp+ ','? | star_expression ',' | star_expression
@@ -662,34 +666,34 @@ star_expression ::= '*' bitwise_or | expression
 comma_star_named_exp ::= ',' star_named_expression
 star_named_expressions ::= star_named_expression comma_star_exp* ','? 
 star_named_expression ::= '*' bitwise_or | named_expression
-assignment_expression ::= NAME ':=' expression 
+assignment_expression ::= NAME  whitespaces? ':=' whitespaces? expression 
 named_expression ::= assignment_expression | expression
-or_conjunction ::= 'or' conjunction
+or_conjunction ::= 'or' whitespaces conjunction
 disjunction ::= conjunction or_conjunction* 
-and_inversion ::= 'and' inversion
+and_inversion ::=  whitespaces 'and' whitespaces inversion
 conjunction ::= inversion and_inversion* 
-inversion ::= 'not' inversion | comparison
+inversion ::= 'not' whitespaces inversion | comparison
 comparison ::= bitwise_or compare_op_bitwise_or_pair+ | bitwise_or
 compare_op_bitwise_or_pair ::= eq_bitwise_or | noteq_bitwise_or | lte_bitwise_or
 compare_op_bitwise_or_pair ::= lt_bitwise_or | gte_bitwise_or | gt_bitwise_or
 compare_op_bitwise_or_pair ::= notin_bitwise_or | in_bitwise_or | isnot_bitwise_or | is_bitwise_or
-eq_bitwise_or ::= '==' bitwise_or 
-noteq_bitwise_or ::= '!='  bitwise_or 
-lte_bitwise_or ::= '<=' bitwise_or 
-lt_bitwise_or ::= '<' bitwise_or 
-gte_bitwise_or ::= '>=' bitwise_or 
-gt_bitwise_or ::= '>' bitwise_or 
+eq_bitwise_or ::= whitespaces? '==' whitespaces? bitwise_or 
+noteq_bitwise_or ::= whitespaces? '!=' whitespaces? bitwise_or 
+lte_bitwise_or ::= whitespaces? '<=' whitespaces? bitwise_or 
+lt_bitwise_or ::=  whitespaces? '<' whitespaces? bitwise_or 
+gte_bitwise_or ::= whitespaces? '>=' whitespaces? bitwise_or 
+gt_bitwise_or ::= whitespaces? '>' whitespaces? bitwise_or 
 notin_bitwise_or ::= 'not' 'in' bitwise_or 
-in_bitwise_or ::= 'in' bitwise_or 
+in_bitwise_or ::= whitespaces 'in' whitespaces bitwise_or 
 isnot_bitwise_or ::= 'is' 'not' bitwise_or 
 is_bitwise_or ::= 'is' bitwise_or 
 bitwise_or ::= bitwise_or OR_FLAG bitwise_xor | bitwise_xor
 bitwise_xor ::= bitwise_xor '^' bitwise_and | bitwise_and
 bitwise_and ::= bitwise_and '&' shift_expr | shift_expr
 shift_expr ::= shift_expr '<<' sum | shift_expr '>>' sum | sum
-sum ::= sum '+' term | sum '-' term | term
-term ::= term '*' factor | term '/' factor | term '//' factor | term '%' factor 
-term ::= term '@' factor | factor
+sum ::= sum whitespaces? '+' whitespaces? term | sum whitespaces? '-' whitespaces? term | term
+term ::= term whitespaces? '*' whitespaces? factor | term whitespaces? '/' whitespaces? factor | term whitespaces? '//' whitespaces? factor | term whitespaces? '%' whitespaces? factor 
+term ::= term whitespaces? '@' whitespaces? factor | factor
 factor ::= '+' factor | '-' factor | '~' factor | power
 power ::= await_primary '**' factor | await_primary
 await_primary ::= 'await' primary | primary
@@ -744,11 +748,11 @@ setcomp ::= '{' named_expression for_if_clauses '}'
 genexp ::= '(' assignment_expression for_if_clauses ')' 
 genexp ::= '(' expression for_if_clauses ')' 
 dictcomp ::= '{' kvpair for_if_clauses '}' 
-arguments ::= args ','?
+arguments ::= args whitespaces? ','?
 stared_exp_or_assign_exp_or_exp ::= starred_expression | assignment_expression | expression
-comma_sae ::= ',' stared_exp_or_assign_exp_or_exp 
+comma_sae ::= ',' whitespaces? stared_exp_or_assign_exp_or_exp 
 comma_kwargs ::= ',' kwargs
-args ::= stared_exp_or_assign_exp_or_exp comma_sae* comma_kwargs | kwargs 
+args ::= stared_exp_or_assign_exp_or_exp comma_sae* comma_kwargs? | kwargs 
 comma_kwarg_or_starred ::= ',' kwarg_or_starred
 comma_kwarg_or_double_starred ::= ',' kwarg_or_double_starred
 kwargs ::= kwarg_or_starred comma_kwarg_or_starred* kwarg_or_double_starred comma_kwarg_or_double_starred*
@@ -789,7 +793,7 @@ FLOAT ::= INT '.' INT
 FSTRING_MIDDLE ::= EVERYTHING
 FSTRING_START ::= 'f"' | 'f'''
 FSTRING_END ::= '"' | '''
-STRING ::= '"' chars '"'
+STRING ::= '"' chars '"' | ''' chars '''
 chars ::= EVERYTHING | chars EVERYTHING | chars escaped | escaped
 escaped ::= '\\\\' | '\\"'  | '\\n'  | '\\b'  | '\\f'  | '\\r' | '\\t' 
     """
@@ -798,22 +802,76 @@ escaped ::= '\\\\' | '\\"'  | '\\n'  | '\\b'  | '\\f'  | '\\r' | '\\t'
 now_time = time.time()
 Parser(grammar).read(
     """
-def count_even_numbers(limit):
-    count = 0
-    number += 1
-    while number <= limit:
-        if number % 2 == 0:
-            count = count + 1
-        number = number + 1
-            return count
+def initialize_graph(vertices):
+    graph = {}
+    i = 1
+    while i <= vertices:
+        graph[i] = {}
+        i = i + 1
+    return graph
 
-limit = 10
-result = count_even_numbers(limit)
+def add_edge(graph, u, v, capacity):
+    if u in graph:
+        graph[u][v] = capacity
+    if v in graph:
+        graph[v][u] = 0
 
-if result > 0:
-    print("There are",result, "even numbers.")
+def bfs(graph, source, sink, parent, vertices):
+    visited = {}
+    i = 1
+    while i <= vertices:
+        visited[i] = False
+        i = i + 1
+    queue = [source]
+    visited[source] = True
+    while len(queue) > 0:
+        current = queue.pop(0)
+        for neighbor in graph[current]:
+            if not visited[neighbor] and graph[current][neighbor] > 0:
+                queue.append(neighbor)
+                visited[neighbor] = True
+                parent[neighbor] = current
+                if neighbor == sink:
+                    return True
+    return False
+
+def edmonds_karp(graph, source, sink, vertices):
+    parent = {}
+    max_flow = 0
+    while bfs(graph, source, sink, parent, vertices):
+        path_flow = float('inf')
+        current = sink
+        while current != source:
+            path_flow = min(path_flow, graph[parent[current]][current])
+            current = parent[current]
+        max_flow = max_flow + path_flow
+        current = sink
+        while current != source:
+            prev = parent[current]
+            graph[prev][current] = graph[prev][current] - path_flow
+            graph[current][prev] = graph[current][prev] + path_flow
+            current = prev
+    return max_flow
+
+vertices = 6
+graph = initialize_graph(vertices)
+add_edge(graph, 1, 2, 16)
+add_edge(graph, 1, 3, 13)
+add_edge(graph, 2, 3, 10)
+add_edge(graph, 2, 4, 12)
+add_edge(graph, 3, 2, 4)
+add_edge(graph, 3, 5, 14)
+add_edge(graph, 4, 3, 9)
+add_edge(graph, 4, 6, 20)
+add_edge(graph, 5, 4, 7)
+add_edge(graph, 5, 6, 4)
+source = 1
+sink = 6
+max_flow = edmonds_karp(graph, source, sink, vertices)
+if max_flow > 0:
+    print("The maximum possible flow is", max_flow)
 else:
-    print("No even numbers found.")
+    print("No flow is possible from source to sink")
     """
 )
 print("The time is", time.time() - now_time, "s.")

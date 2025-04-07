@@ -15,11 +15,11 @@ compound_stmt ::= function_def | if_stmt | class_def | with_stmt | for_stmt | tr
 assignment ::= NAME ':' expression =annotated_rhs?
 assignment ::= '(' single_target ')' ':' expression =annotated_rhs? 
 assignment ::= single_subscript_attribute_target ':' expression =annotated_rhs?
-starexp_eq ::= star_targets '='
+starexp_eq ::= star_targets whitespaces? '='
 assignment ::= starexp_eq+ yield_expr | starexp_eq+ star_expressions
-assignment ::= single_target augassign yield_expr | single_target augassign star_expressions 
+assignment ::= single_target whitespaces? augassign whitespaces? yield_expr | single_target whitespaces? augassign whitespaces? star_expressions 
 annotated_rhs ::= yield_expr | star_expressions
-augassign ::= '+=' | '-=' | '*=' | '@=' | '/=' | '%=' | '&=' | OR_FLAG '=' | '^=' | '<<=' | '>>=' | '**=' | '//=' 
+augassign ::= '=' | '+=' | '-=' | '*=' | '@=' | '/=' | '%=' | '&=' | OR_FLAG '=' | '^=' | '<<=' | '>>=' | '**=' | '//=' 
 return_stmt ::= 'return' star_expressions?
 raise_stmt ::= 'raise' expression 'from' expression | 'raise' | 'raise' expression
 del_stmt ::= 'del' del_targets  
@@ -242,7 +242,7 @@ arguments ::= args ','?
 stared_exp_or_assign_exp_or_exp ::= starred_expression | assignment_expression | expression
 comma_sae ::= ',' stared_exp_or_assign_exp_or_exp 
 comma_kwargs ::= ',' kwargs
-args ::= stared_exp_or_assign_exp_or_exp comma_sae* comma_kwargs | kwargs 
+args ::= stared_exp_or_assign_exp_or_exp comma_sae* comma_kwargs? | kwargs 
 comma_kwarg_or_starred ::= ',' kwarg_or_starred
 comma_kwarg_or_double_starred ::= ',' kwarg_or_double_starred
 kwargs ::= kwarg_or_starred comma_kwarg_or_starred* kwarg_or_double_starred comma_kwarg_or_double_starred*
